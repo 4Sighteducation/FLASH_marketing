@@ -63,7 +63,7 @@ export default function UserManagement() {
       }
 
       // Filter by email
-      const matchingAuthUsers = authData.users.filter(u =>
+      const matchingAuthUsers = authData.users.filter((u: any) =>
         u.email?.toLowerCase().includes(searchEmail.toLowerCase())
       );
 
