@@ -50,7 +50,7 @@ export default function TestTools() {
       }
 
       // Filter by domain
-      const testUsers = authData.users.filter(u => 
+      const testUsers = authData.users.filter((u: any) => 
         u.email?.toLowerCase().endsWith(testDomain.toLowerCase())
       );
 
