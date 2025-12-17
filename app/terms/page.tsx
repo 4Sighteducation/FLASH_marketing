@@ -47,18 +47,26 @@ export default function TermsOfService() {
             <h3>Free Tier</h3>
             <p>Limited access to 1 subject and 10 flashcards. No payment required.</p>
             
-            <h3>Premium Tier (£2.99/month)</h3>
-            <p>Unlimited subjects, unlimited flashcards, offline mode, and priority support.</p>
+            <h3>Premium Tier</h3>
+            <p>Unlimited subjects, unlimited flashcards, smart revision scheduling, and priority support.</p>
+            <ul>
+              <li>Monthly: from £2.99/month</li>
+              <li>Annual: from £29.99/year</li>
+            </ul>
             
-            <h3>Pro Tier (£4.99/month)</h3>
+            <h3>Pro Tier</h3>
             <p>Everything in Premium plus AI card generation, voice analysis, past papers, and advanced analytics.</p>
+            <ul>
+              <li>Monthly: from £4.99/month</li>
+              <li>Annual: from £49.99/year</li>
+            </ul>
             
             <h3>Billing</h3>
             <ul>
-              <li>Subscriptions are billed monthly</li>
+              <li>Subscriptions are billed monthly or annually (depending on the plan you select)</li>
               <li>Payments processed via Apple App Store or Google Play Store</li>
               <li>Prices are in GBP (British Pounds)</li>
-              <li>You can cancel anytime - no refunds for partial months</li>
+              <li>You can cancel anytime - refunds follow Apple/Google policies</li>
             </ul>
           </section>
           

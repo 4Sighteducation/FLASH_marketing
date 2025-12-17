@@ -488,6 +488,8 @@
   position: relative;
   text-align: center;
   padding: 3rem 2rem;
+  /* Allow the "Most Popular" badge to sit outside the card without clipping */
+  overflow: visible;
 }
 
 .featured {
@@ -502,12 +504,55 @@
   transform: translateX(-50%);
   background: linear-gradient(90deg, #00F5FF, #FF006E);
   color: white;
-  padding: 0.5rem 1rem;
+  padding: 0.6rem 1.25rem;
   border-radius: 2rem;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  box-shadow: 0 0 16px rgba(255, 0, 110, 0.35), 0 0 18px rgba(0, 245, 255, 0.22);
+}
+
+.billingToggleWrap {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.billingToggle {
+  display: inline-flex;
+  padding: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 245, 255, 0.35);
+  background: rgba(0, 245, 255, 0.06);
+  box-shadow: 0 0 22px rgba(0, 245, 255, 0.12);
+}
+
+.billingOption {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: #94A3B8;
+  font-weight: 800;
+  padding: 0.65rem 1.05rem;
+  border-radius: 999px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+
+.billingOptionActive {
+  color: white;
+  background: rgba(255, 0, 110, 0.18);
+  border: 1px solid rgba(255, 0, 110, 0.45);
+  box-shadow: 0 0 18px rgba(255, 0, 110, 0.22);
+}
+
+.billingHint {
+  color: #94A3B8;
+  font-size: 0.95rem;
+  margin: 0;
 }
 
 .pricingCard h3 {

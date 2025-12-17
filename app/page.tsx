@@ -1,12 +1,28 @@
 'use client'
 
 import Image from 'next/image'
+import { useMemo, useState } from 'react'
 import Navigation from './components/Navigation'
 import LaunchBanner from './components/LaunchBanner'
 import ComingSoonButton from './components/ComingSoonButton'
 import styles from './page.module.css'
 
 export default function Home() {
+  const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
+
+  const pricing = useMemo(() => {
+    if (billing === 'annual') {
+      return {
+        premium: { amount: '£29.99', suffix: '/year' },
+        pro: { amount: '£49.99', suffix: '/year' },
+      };
+    }
+    return {
+      premium: { amount: '£2.99', suffix: '/month' },
+      pro: { amount: '£4.99', suffix: '/month' },
+    };
+  }, [billing]);
+
   // FAQ Schema for Google
   const faqSchema = {
     "@context": "https://schema.org",
@@ -330,6 +346,32 @@ export default function Home() {
           <h2 className={styles.sectionTitle}>
             Start Free, Upgrade <span className={styles.gradientText}>When Ready</span>
           </h2>
+
+          <div className={styles.billingToggleWrap}>
+            <div className={styles.billingToggle} role="tablist" aria-label="Billing period">
+              <button
+                type="button"
+                className={`${styles.billingOption} ${billing === 'monthly' ? styles.billingOptionActive : ''}`}
+                onClick={() => setBilling('monthly')}
+                aria-selected={billing === 'monthly'}
+                role="tab"
+              >
+                Monthly
+              </button>
+              <button
+                type="button"
+                className={`${styles.billingOption} ${billing === 'annual' ? styles.billingOptionActive : ''}`}
+                onClick={() => setBilling('annual')}
+                aria-selected={billing === 'annual'}
+                role="tab"
+              >
+                Annual
+              </button>
+            </div>
+            <p className={styles.billingHint}>
+              {billing === 'annual' ? 'Best value for year-long courses' : 'Flexible monthly billing'}
+            </p>
+          </div>
           
           <div className={styles.pricingGrid}>
             <div className={`${styles.pricingCard} ${styles.card}`}>
@@ -349,12 +391,12 @@ export default function Home() {
             <div className={`${styles.pricingCard} ${styles.card} ${styles.cardPink} ${styles.featured}`}>
               <div className={styles.badge}>Most Popular</div>
               <h3>Premium</h3>
-              <div className={styles.price}>£2.99<span>/month</span></div>
+              <div className={styles.price}>{pricing.premium.amount}<span>{pricing.premium.suffix}</span></div>
               <ul className={styles.features}>
                 <li>✓ Unlimited subjects</li>
                 <li>✓ Unlimited flashcards</li>
                 <li>✓ All 10,000+ topics</li>
-                <li>✓ Offline mode</li>
+                <li>✓ Smart revision scheduling</li>
                 <li>✓ Priority support</li>
               </ul>
               <ComingSoonButton variant="primary" className={styles.btn}>
@@ -364,7 +406,7 @@ export default function Home() {
             
             <div className={`${styles.pricingCard} ${styles.card}`}>
               <h3>Pro</h3>
-              <div className={styles.price}>£4.99<span>/month</span></div>
+              <div className={styles.price}>{pricing.pro.amount}<span>{pricing.pro.suffix}</span></div>
               <ul className={styles.features}>
                 <li>✓ Everything in Premium</li>
                 <li>✓ AI card generation</li>
