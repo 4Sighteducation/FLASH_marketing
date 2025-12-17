@@ -505,7 +505,7 @@ export default function Home() {
                 <h4>Download</h4>
                 <a href="#">iOS App</a>
                 <a href="#">Android App</a>
-                <a href="mailto:support@fl4shcards.com">Support</a>
+                <a href="/support">Support</a>
               </div>
               <div>
                 <h4>Legal</h4>
