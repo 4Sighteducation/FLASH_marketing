@@ -75,7 +75,8 @@ export default function AdminLayout({
         <div className="admin-nav-links">
           <a href="/admin" className="nav-link">Dashboard</a>
           <a href="/admin/users" className="nav-link">Users</a>
-          <a href="/admin/test-tools" className="nav-link">Test Tools</a>
+          <a href="/admin/waitlist" className="nav-link">Waitlist</a>
+          <a href="/admin/test-tools" className="nav-link">Ops Tools</a>
           <a href="/" className="nav-link-back">← Back to Site</a>
           <button onClick={handleLogout} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
             Logout

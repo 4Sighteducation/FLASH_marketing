@@ -1,23 +1,24 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '../../../lib/supabase';
+import { adminFetch } from '../../../lib/adminClient';
 
-interface UserProfile {
-  user_id: string;
-  email?: string;
-  tier: string;
-  is_onboarded: boolean;
-  created_at: string;
-  last_active_at?: string;
-  current_streak: number;
-}
+type AdminUserRow = {
+  id: string;
+  email: string | null;
+  created_at: string | null;
+  last_sign_in_at: string | null;
+  banned_until: string | null;
+  subscription: { tier: string | null; expires_at: string | null };
+};
+type UsersResponse = { rows: AdminUserRow[] };
 
 export default function UserManagement() {
   const [searchEmail, setSearchEmail] = useState('');
-  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<string>('');
 
   const searchUsers = async () => {
     if (!searchEmail.trim()) {
@@ -27,70 +28,11 @@ export default function UserManagement() {
 
     setLoading(true);
     try {
-      // Get all users from auth (need service role for this in production)
-      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-      
-      if (authError) {
-        console.error('Auth error:', authError);
-        // Fallback: try to find by profile
-        const { data: profiles } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .limit(50);
-
-        if (profiles) {
-          // Get emails for each profile
-          const usersWithEmails = await Promise.all(
-            profiles.map(async (profile) => {
-              try {
-                const { data: authUser } = await supabase.auth.admin.getUserById(profile.user_id);
-                return {
-                  ...profile,
-                  email: authUser?.user?.email,
-                };
-              } catch {
-                return { ...profile, email: 'Unknown' };
-              }
-            })
-          );
-
-          const filtered = usersWithEmails.filter(u => 
-            u.email?.toLowerCase().includes(searchEmail.toLowerCase())
-          );
-          setUsers(filtered);
-        }
-        return;
-      }
-
-      // Filter by email
-      const matchingAuthUsers = authData.users.filter((u: any) =>
-        u.email?.toLowerCase().includes(searchEmail.toLowerCase())
-      );
-
-      // Get profiles for matching users
-      const userIds = matchingAuthUsers.map(u => u.id);
-      const { data: profiles } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .in('user_id', userIds);
-
-      // Merge auth data with profiles
-      const merged = matchingAuthUsers.map(authUser => {
-        const profile = profiles?.find(p => p.user_id === authUser.id);
-        return {
-          user_id: authUser.id,
-          email: authUser.email,
-          tier: profile?.tier || 'starter',
-          is_onboarded: profile?.is_onboarded || false,
-          created_at: profile?.created_at || authUser.created_at,
-          last_active_at: profile?.last_active_at,
-          current_streak: profile?.current_streak || 0,
-        };
+      const res = await adminFetch<UsersResponse>(`/api/admin/users?q=${encodeURIComponent(searchEmail)}&limit=25`, {
+        method: 'GET',
       });
-
-      setUsers(merged);
-
-      if (merged.length === 0) {
+      setUsers(res.rows || []);
+      if (!res.rows || res.rows.length === 0) {
         alert('No users found');
       }
     } catch (error: any) {
@@ -101,60 +43,56 @@ export default function UserManagement() {
     }
   };
 
-  const changeTier = async (userId: string, newTier: string, email: string) => {
-    if (!confirm(`Change ${email} to ${newTier}?`)) return;
+  const changeTier = async (userId: string, newTier: string, email: string | null) => {
+    if (!confirm(`Change ${email || userId} to ${newTier}?`)) return;
 
     try {
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({ tier: newTier })
-        .eq('user_id', userId);
-
-      if (error) throw error;
-
-      alert('Tier updated successfully!');
-      searchUsers(); // Refresh
+      await adminFetch(`/api/admin/users/${userId}/tier`, {
+        method: 'POST',
+        body: JSON.stringify({ tier: newTier, expires_at: expiresAt ? new Date(expiresAt).toISOString() : null }),
+      });
+      alert('Tier updated!');
+      await searchUsers();
     } catch (error: any) {
       alert('Error: ' + error.message);
     }
   };
 
-  const resetOnboarding = async (userId: string, email: string) => {
-    if (!confirm(`Reset onboarding for ${email}?`)) return;
-
+  const blockUser = async (userId: string, blocked: boolean, email: string | null) => {
+    if (!confirm(`${blocked ? 'BLOCK' : 'UNBLOCK'} ${email || userId}?`)) return;
     try {
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({ is_onboarded: false })
-        .eq('user_id', userId);
-
-      if (error) throw error;
-
-      alert('Onboarding reset!');
-      searchUsers();
-    } catch (error: any) {
-      alert('Error: ' + error.message);
+      await adminFetch(`/api/admin/users/${userId}/block`, {
+        method: 'POST',
+        body: JSON.stringify({ blocked }),
+      });
+      alert(blocked ? 'User blocked.' : 'User unblocked.');
+      await searchUsers();
+    } catch (e: any) {
+      alert('Error: ' + (e.message || 'Failed'));
     }
   };
 
-  const deleteUser = async (userId: string, email: string) => {
-    if (!confirm(`DELETE ${email}?\n\nThis will delete:\n• Profile\n• All flashcards\n• Auth account\n\nCANNOT BE UNDONE!`)) {
+  const hardDeleteUser = async (userId: string, email: string | null) => {
+    if (
+      !confirm(
+        `HARD DELETE ${email || userId}?\n\nThis will attempt to delete:\n• App data rows (best-effort)\n• Auth account\n\nCANNOT BE UNDONE!`
+      )
+    ) {
       return;
     }
 
     try {
-      // Delete flashcards
-      await supabase.from('flashcards').delete().eq('user_id', userId);
-      
-      // Delete profile
-      await supabase.from('user_profiles').delete().eq('user_id', userId);
-      
-      // Delete auth user
-      const { error } = await supabase.auth.admin.deleteUser(userId);
-      if (error) throw error;
-
-      alert('User deleted successfully');
-      setUsers(users.filter(u => u.user_id !== userId));
+      const res = await adminFetch<{ ok: boolean; deleteErrors?: Array<{ table: string; error: string }> }>(
+        `/api/admin/users/${userId}/hard-delete`,
+        { method: 'DELETE' }
+      );
+      if (res.deleteErrors && res.deleteErrors.length > 0) {
+        console.warn('Delete errors:', res.deleteErrors);
+        alert(`User deleted, but some table deletes failed (see console).`);
+      } else {
+        alert('User deleted successfully.');
+      }
+      setUsers(users.filter((u) => u.id !== userId));
       setExpandedUser(null);
     } catch (error: any) {
       alert('Error: ' + error.message);
@@ -173,7 +111,7 @@ export default function UserManagement() {
           placeholder="Search by email..."
           value={searchEmail}
           onChange={(e) => setSearchEmail(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && searchUsers()}
+          onKeyDown={(e) => e.key === 'Enter' && searchUsers()}
         />
         <button 
           onClick={searchUsers} 
@@ -184,6 +122,24 @@ export default function UserManagement() {
         </button>
       </div>
 
+      <div style={{ marginBottom: 20, color: '#94A3B8', fontSize: 14 }}>
+        Tier overrides are stored in <code style={{ color: '#00F5FF' }}>public.user_subscriptions</code>. Optional expiry is useful for
+        temporary grants.
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ color: '#94A3B8', fontSize: 14, display: 'block', marginBottom: 8 }}>
+          Optional expiry (applies to tier changes):
+        </label>
+        <input
+          className="search-input"
+          type="datetime-local"
+          value={expiresAt}
+          onChange={(e) => setExpiresAt(e.target.value)}
+          style={{ maxWidth: 360 }}
+        />
+      </div>
+
       {/* Results */}
       {users.length > 0 && (
         <div>
@@ -192,30 +148,30 @@ export default function UserManagement() {
           </p>
 
           {users.map((user) => (
-            <div key={user.user_id} className="user-card">
+            <div key={user.id} className="user-card">
               <div 
                 className="user-header"
                 onClick={() => setExpandedUser(
-                  expandedUser === user.user_id ? null : user.user_id
+                  expandedUser === user.id ? null : user.id
                 )}
               >
                 <div>
-                  <div className="user-email">{user.email}</div>
+                  <div className="user-email">{user.email || '(no email)'}</div>
                   <div style={{ marginTop: '8px' }}>
-                    <span className={`tier-badge tier-${user.tier}`}>
-                      {user.tier}
+                    <span className="tier-badge tier-pro" style={{ opacity: 0.8 }}>
+                      {user.subscription?.tier || '—'}
                     </span>
                     <span style={{ color: '#64748B', fontSize: '12px' }}>
-                      Joined {new Date(user.created_at).toLocaleDateString()}
+                      Joined {user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}
                     </span>
                   </div>
                 </div>
                 <span style={{ color: '#94A3B8' }}>
-                  {expandedUser === user.user_id ? '▲' : '▼'}
+                  {expandedUser === user.id ? '▲' : '▼'}
                 </span>
               </div>
 
-              {expandedUser === user.user_id && (
+              {expandedUser === user.id && (
                 <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                   {/* Tier Buttons */}
                   <div style={{ marginBottom: '16px' }}>
@@ -223,14 +179,14 @@ export default function UserManagement() {
                       Change Tier:
                     </p>
                     <div className="flex gap-12">
-                      {['starter', 'pro', 'ultimate'].map((tier) => (
+                      {['free', 'premium', 'pro'].map((tier) => (
                         <button
                           key={tier}
-                          onClick={() => changeTier(user.user_id, tier, user.email || '')}
+                          onClick={() => changeTier(user.id, tier, user.email)}
                           className="action-button"
                           style={{
-                            opacity: user.tier === tier ? 1 : 0.5,
-                            borderColor: user.tier === tier ? '#00F5FF' : 'rgba(255,255,255,0.1)',
+                            opacity: (user.subscription?.tier || '').toLowerCase() === tier ? 1 : 0.5,
+                            borderColor: (user.subscription?.tier || '').toLowerCase() === tier ? '#00F5FF' : 'rgba(255,255,255,0.1)',
                           }}
                         >
                           {tier.charAt(0).toUpperCase() + tier.slice(1)}
@@ -242,16 +198,16 @@ export default function UserManagement() {
                   {/* Other Actions */}
                   <div className="flex gap-12" style={{ marginBottom: '16px' }}>
                     <button
-                      onClick={() => resetOnboarding(user.user_id, user.email || '')}
+                      onClick={() => blockUser(user.id, !user.banned_until, user.email)}
                       className="action-button"
                     >
-                      🔄 Reset Onboarding
+                      {user.banned_until ? '✅ Unblock' : '⛔ Block'}
                     </button>
                     <button
-                      onClick={() => deleteUser(user.user_id, user.email || '')}
+                      onClick={() => hardDeleteUser(user.id, user.email)}
                       className="danger-button"
                     >
-                      🗑️ Delete User
+                      🗑️ Hard Delete
                     </button>
                   </div>
 
@@ -263,12 +219,11 @@ export default function UserManagement() {
                     fontSize: '13px',
                     color: '#94A3B8',
                   }}>
-                    <div>🔥 Streak: {user.current_streak} days</div>
-                    <div>✅ Onboarded: {user.is_onboarded ? 'Yes' : 'No'}</div>
+                    <div>🆔 {user.id}</div>
+                    <div>📅 Last sign-in: {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'Never'}</div>
+                    <div>⛔ Banned until: {user.banned_until ? new Date(user.banned_until).toLocaleString() : '—'}</div>
                     <div>
-                      📅 Last active: {user.last_active_at 
-                        ? new Date(user.last_active_at).toLocaleDateString() 
-                        : 'Never'}
+                      💎 Tier expiry: {user.subscription?.expires_at ? new Date(user.subscription.expires_at).toLocaleString() : '—'}
                     </div>
                   </div>
                 </div>
