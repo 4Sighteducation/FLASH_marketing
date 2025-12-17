@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, isAdminEmail } from '../../../lib/supabase';
 
@@ -13,6 +13,53 @@ const AdminLogin = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
+  const [isRecovery, setIsRecovery] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [newPassword2, setNewPassword2] = useState('');
+  const [recoveryReady, setRecoveryReady] = useState(false);
+
+  const passwordMismatch = useMemo(() => {
+    if (!isRecovery) return false;
+    if (!newPassword || !newPassword2) return false;
+    return newPassword !== newPassword2;
+  }, [isRecovery, newPassword, newPassword2]);
+
+  useEffect(() => {
+    // Handle Supabase password recovery links:
+    // /admin/login#access_token=...&refresh_token=...&type=recovery
+    try {
+      const hash = window.location.hash?.replace(/^#/, '') || '';
+      if (!hash) return;
+      const params = new URLSearchParams(hash);
+      const type = params.get('type');
+      const access_token = params.get('access_token');
+      const refresh_token = params.get('refresh_token');
+
+      if (type === 'recovery' && access_token && refresh_token) {
+        setIsRecovery(true);
+        setLoading(true);
+        supabase.auth
+          .setSession({ access_token, refresh_token })
+          .then(({ error: sessErr }) => {
+            if (sessErr) {
+              setError(sessErr.message || 'Failed to start password recovery session.');
+              setIsRecovery(false);
+              return;
+            }
+            setRecoveryReady(true);
+            // Clean URL so tokens aren't left in history.
+            window.history.replaceState({}, document.title, window.location.pathname);
+          })
+          .catch(() => {
+            setError('Failed to start password recovery session.');
+            setIsRecovery(false);
+          })
+          .finally(() => setLoading(false));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +118,42 @@ const AdminLogin = () => {
       }, 3000);
     } catch (error: any) {
       setError(error.message || 'Failed to send reset email');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSetNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!recoveryReady) {
+      setError('Recovery session not ready yet. Please wait a moment.');
+      return;
+    }
+    if (!newPassword || newPassword.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (newPassword !== newPassword2) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error: updErr } = await supabase.auth.updateUser({ password: newPassword });
+      if (updErr) throw updErr;
+
+      if (!data.user || !isAdminEmail(data.user.email)) {
+        setError('Password updated, but this account is not allowlisted for admin access.');
+        await supabase.auth.signOut();
+        return;
+      }
+
+      alert('✅ Password updated. You can now access the admin dashboard.');
+      router.push('/admin');
+    } catch (e2: any) {
+      setError(e2?.message || 'Failed to update password.');
     } finally {
       setLoading(false);
     }
@@ -149,6 +232,127 @@ const AdminLogin = () => {
           Admin access only
         </p>
 
+        {isRecovery ? (
+          <form onSubmit={handleSetNewPassword}>
+            <p style={{ color: '#94A3B8', fontSize: '14px', marginBottom: '20px' }}>
+              Set a new password for your admin account.
+            </p>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                color: '#94A3B8',
+                fontSize: '14px',
+                marginBottom: '8px',
+                fontWeight: 600,
+              }}>
+                New Password
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Minimum 8 characters"
+                required
+                style={{
+                  width: '100%',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  color: '#FFFFFF',
+                  fontSize: '16px',
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                color: '#94A3B8',
+                fontSize: '14px',
+                marginBottom: '8px',
+                fontWeight: 600,
+              }}>
+                Confirm New Password
+              </label>
+              <input
+                type="password"
+                value={newPassword2}
+                onChange={(e) => setNewPassword2(e.target.value)}
+                placeholder="Repeat password"
+                required
+                style={{
+                  width: '100%',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: passwordMismatch ? '1px solid rgba(255, 0, 110, 0.6)' : '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  color: '#FFFFFF',
+                  fontSize: '16px',
+                }}
+              />
+            </div>
+
+            {error && (
+              <div style={{
+                background: 'rgba(255, 0, 110, 0.1)',
+                border: '1px solid rgba(255, 0, 110, 0.3)',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '20px',
+                color: '#FF006E',
+                fontSize: '14px',
+              }}>
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || passwordMismatch}
+              style={{
+                width: '100%',
+                background: '#00F5FF',
+                color: '#0a0f1e',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '16px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading || passwordMismatch ? 0.5 : 1,
+                boxShadow: loading ? 'none' : '0 0 20px rgba(0, 245, 255, 0.4)',
+              }}
+            >
+              {loading ? 'Updating...' : 'Set New Password'}
+            </button>
+
+            <button
+              type="button"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                setIsRecovery(false);
+                setShowForgotPassword(false);
+                setError('');
+                setNewPassword('');
+                setNewPassword2('');
+              }}
+              style={{
+                width: '100%',
+                background: 'transparent',
+                color: '#64748B',
+                border: 'none',
+                padding: '12px',
+                fontSize: '14px',
+                cursor: 'pointer',
+                marginTop: '12px',
+              }}
+            >
+              ← Back to Login
+            </button>
+          </form>
+        ) : (
         {!showForgotPassword ? (
           <form onSubmit={handleLogin}>
             <div style={{ marginBottom: '20px' }}>
@@ -357,6 +561,7 @@ const AdminLogin = () => {
               ← Back to Login
             </button>
           </form>
+        )}
         )}
 
         <p style={{
