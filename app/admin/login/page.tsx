@@ -288,6 +288,20 @@ const AdminLogin = () => {
               />
             </div>
 
+            {error && (
+              <div style={{
+                background: 'rgba(255, 0, 110, 0.1)',
+                border: '1px solid rgba(255, 0, 110, 0.3)',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '20px',
+                color: '#FF006E',
+                fontSize: '14px',
+              }}>
+                {error}
+              </div>
+            )}
+
             {resetSuccess && (
               <div style={{
                 background: 'rgba(0, 245, 255, 0.1)',
