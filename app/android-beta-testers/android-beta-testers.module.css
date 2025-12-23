@@ -1,0 +1,187 @@
+.page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #050510 0%, #0A0A1F 100%);
+  padding: 10rem 0 3rem;
+  color: white;
+}
+
+.container {
+  max-width: 1050px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.title {
+  font-size: clamp(2.4rem, 5vw, 3.75rem);
+  font-weight: 900;
+  text-align: center;
+  margin-bottom: 0.75rem;
+}
+
+.gradient {
+  background: linear-gradient(90deg, #00F5FF 0%, #FF006E 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+  text-align: center;
+  font-size: 1.15rem;
+  color: #94A3B8;
+  max-width: 70ch;
+  margin: 0 auto 2.75rem;
+  line-height: 1.6;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 2rem;
+  margin-top: 2rem;
+  align-items: start;
+}
+
+.card {
+  background: rgba(26, 26, 53, 0.55);
+  border: 2px solid rgba(0, 245, 255, 0.28);
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 0 24px rgba(0, 245, 255, 0.12);
+}
+
+.cardPink {
+  border-color: rgba(255, 0, 110, 0.28);
+  box-shadow: 0 0 24px rgba(255, 0, 110, 0.12);
+}
+
+.cardTitle {
+  font-size: 1.35rem;
+  margin: 0 0 0.75rem;
+  font-weight: 900;
+  color: #00F5FF;
+}
+
+.cardPink .cardTitle {
+  color: #FF006E;
+}
+
+.list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.list li {
+  padding: 0.7rem 0;
+  color: #E2E8F0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.list li:last-child {
+  border-bottom: none;
+}
+
+.note {
+  margin-top: 1rem;
+  color: #94A3B8;
+  line-height: 1.6;
+}
+
+.form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.label {
+  display: block;
+  color: #00F5FF;
+  font-weight: 800;
+  font-size: 0.95rem;
+  margin-bottom: 0.35rem;
+}
+
+.input {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border-radius: 0.75rem;
+  border: 2px solid rgba(0, 245, 255, 0.2);
+  background: rgba(10, 10, 31, 0.85);
+  color: white;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: rgba(0, 245, 255, 0.7);
+  box-shadow: 0 0 16px rgba(0, 245, 255, 0.18);
+}
+
+.btnPrimary {
+  width: 100%;
+  padding: 0.95rem 1.25rem;
+  border-radius: 0.85rem;
+  border: none;
+  cursor: pointer;
+  font-weight: 900;
+  color: #0A0A1F;
+  background: linear-gradient(90deg, #00F5FF 0%, #FF006E 100%);
+  transition: all 0.2s ease;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 26px rgba(0, 245, 255, 0.25);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #FF006E;
+  font-weight: 700;
+  background: rgba(255, 0, 110, 0.1);
+  border: 1px solid rgba(255, 0, 110, 0.25);
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.9rem;
+}
+
+.success {
+  color: #00F5FF;
+  font-weight: 800;
+  background: rgba(0, 245, 255, 0.07);
+  border: 1px solid rgba(0, 245, 255, 0.25);
+  border-radius: 0.75rem;
+  padding: 0.9rem 1rem;
+  line-height: 1.55;
+}
+
+.finePrint {
+  margin-top: 1rem;
+  color: #94A3B8;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.finePrint a {
+  color: #00F5FF;
+  text-decoration: none;
+}
+
+.finePrint a:hover {
+  text-shadow: 0 0 10px rgba(0, 245, 255, 0.35);
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .page {
+    padding: 8rem 0 2.5rem;
+  }
+}
+
+

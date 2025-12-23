@@ -9,6 +9,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
+      url: 'https://www.fl4sh.cards/android-beta-testers',
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.6,
+    },
+    {
       url: 'https://www.fl4sh.cards/privacy',
       lastModified: new Date(),
       changeFrequency: 'monthly',

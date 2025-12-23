@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react'
 import Navigation from './components/Navigation'
 import LaunchBanner from './components/LaunchBanner'
 import ComingSoonButton from './components/ComingSoonButton'
+import AndroidBetaPopup from './components/AndroidBetaPopup'
 import styles from './page.module.css'
 
 export default function Home() {
@@ -112,6 +113,7 @@ export default function Home() {
       
       <Navigation />
       <LaunchBanner />
+      <AndroidBetaPopup />
       <main className={styles.main}>
       {/* Hero Section */}
       <section className={styles.hero}>

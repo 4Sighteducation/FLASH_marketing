@@ -10,7 +10,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json();
+    const { email, source } = await request.json();
 
     if (!email || !email.includes('@')) {
       return NextResponse.json(
@@ -44,6 +44,11 @@ export async function POST(request: NextRequest) {
     const position = (count || 0) + 1;
     const isTopTwenty = position <= 20;
 
+    const resolvedSource =
+      typeof source === 'string' && source.trim().length > 0 && source.trim().length <= 40
+        ? source.trim()
+        : 'launch_banner';
+
     // Insert new waitlist entry
     const { data, error } = await supabase
       .from('waitlist')
@@ -52,7 +57,7 @@ export async function POST(request: NextRequest) {
           email: email.toLowerCase(),
           position,
           is_top_twenty: isTopTwenty,
-          source: 'launch_banner',
+          source: resolvedSource,
           notified: false,
           created_at: new Date().toISOString()
         }
@@ -137,7 +142,7 @@ export async function POST(request: NextRequest) {
             personalizations: [
               {
                 to: [{ email: 'admin@4sighteducation.com' }],
-                subject: `New Waitlist Signup #${position}${isTopTwenty ? ' 🎉 TOP 20!' : ''}`
+                subject: `New Waitlist Signup #${position}${isTopTwenty ? ' 🎉 TOP 20!' : ''} (${resolvedSource})`
               }
             ],
             from: {
@@ -152,7 +157,7 @@ export async function POST(request: NextRequest) {
                   <p><strong>Email:</strong> ${email}</p>
                   <p><strong>Position:</strong> #${position}</p>
                   <p><strong>Top 20:</strong> ${isTopTwenty ? 'YES 🎉' : 'No'}</p>
-                  <p><strong>Source:</strong> Launch Banner</p>
+                  <p><strong>Source:</strong> ${resolvedSource}</p>
                   <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
                 `
               }
