@@ -352,8 +352,7 @@ const AdminLogin = () => {
               ← Back to Login
             </button>
           </form>
-        ) : (
-        {!showForgotPassword ? (
+        ) : !showForgotPassword ? (
           <form onSubmit={handleLogin}>
             <div style={{ marginBottom: '20px' }}>
             <label style={{ 
@@ -561,7 +560,6 @@ const AdminLogin = () => {
               ← Back to Login
             </button>
           </form>
-        )}
         )}
 
         <p style={{
