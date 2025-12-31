@@ -1,8 +1,3 @@
-'use client';
-
-import { useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
-
 function normalizeCode(code: string): string {
   return (code || '').replace(/[^0-9A-Z]/gi, '').toUpperCase();
 }
@@ -12,23 +7,17 @@ function formatCode(code: string): string {
   return c.replace(/(.{4})/g, '$1-').replace(/-$/, '');
 }
 
-export default function ClaimPage() {
-  const sp = useSearchParams();
-  const raw = sp.get('code') || '';
-  const code = useMemo(() => normalizeCode(raw), [raw]);
-  const pretty = useMemo(() => formatCode(raw), [raw]);
+export default function ClaimPage({ searchParams }: { searchParams?: { code?: string } }) {
+  const raw = typeof searchParams?.code === 'string' ? searchParams.code : '';
+  const code = normalizeCode(raw);
+  const pretty = formatCode(raw);
 
-  const deepLink = useMemo(() => {
-    if (!code) return '';
-    return `com.foursighteducation.flash://redeem?code=${encodeURIComponent(code)}`;
-  }, [code]);
+  const deepLink = code ? `com.foursighteducation.flash://redeem?code=${encodeURIComponent(code)}` : '';
 
   return (
     <main style={{ maxWidth: 720, margin: '0 auto', padding: '48px 20px' }}>
       <h1 style={{ fontSize: 34, marginBottom: 8 }}>Redeem FL4SH Pro</h1>
-      <p style={{ opacity: 0.85, marginBottom: 18 }}>
-        Open the FL4SH app, sign in, then redeem this code:
-      </p>
+      <p style={{ opacity: 0.85, marginBottom: 18 }}>Open the FL4SH app, sign in, then redeem this code:</p>
 
       <div
         style={{
