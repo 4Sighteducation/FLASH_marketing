@@ -10,7 +10,7 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Allow login page (and Next internals)
-  if (pathname === '/admin/login') return NextResponse.next();
+  if (pathname === '/admin/login' || pathname.startsWith('/admin/login/')) return NextResponse.next();
 
   if (isAdminPath(pathname)) {
     const token = req.cookies.get(ADMIN_COOKIE_NAME)?.value;
