@@ -160,7 +160,31 @@ export async function POST(request: NextRequest) {
     const existingUpdates: any[] = [];
     const newRows: any[] = [];
     const usedProdIds = new Set<string>();
-    const stgIdToProdId = new Map<string, string>();
+
+    // Guardrail: staging topic_code should be unique within a subject
+    const seenStgCodes = new Set<string>();
+    const dupStgCodes: string[] = [];
+    for (const t of stgTopics) {
+      const c = String(t.topic_code || '').trim();
+      if (!c) continue;
+      if (seenStgCodes.has(c)) dupStgCodes.push(c);
+      else seenStgCodes.add(c);
+    }
+    if (dupStgCodes.length) {
+      return NextResponse.json(
+        { error: 'Staging has duplicate topic_code values (cannot safely promote)', duplicates: Array.from(new Set(dupStgCodes)).slice(0, 50) },
+        { status: 400 }
+      );
+    }
+
+    const dedupeById = (rows: any[]) => {
+      const m = new Map<string, any>();
+      for (const r of rows) {
+        if (!r?.id) continue;
+        m.set(r.id, r); // last write wins
+      }
+      return Array.from(m.values());
+    };
 
     for (const t of stgTopics) {
       const code = t.topic_code;
@@ -169,9 +193,12 @@ export async function POST(request: NextRequest) {
         const key = `${t.topic_level}::${normName(t.topic_name)}`;
         prodId = prodIdByLevelName.get(key);
       }
+      // Never allow two staging topics to map to the same production topic id in one run
+      if (prodId && usedProdIds.has(prodId)) {
+        prodId = undefined;
+      }
       if (prodId) {
         usedProdIds.add(prodId);
-        stgIdToProdId.set(t.id, prodId);
         existingUpdates.push({
           id: prodId,
           exam_board_subject_id: prodSub.id,
@@ -201,12 +228,11 @@ export async function POST(request: NextRequest) {
     };
 
     await chunk(existingUpdates, async (c) => {
-      const { error } = await sb.from('curriculum_topics').upsert(c, { onConflict: 'id' });
+      const { error } = await sb.from('curriculum_topics').upsert(dedupeById(c), { onConflict: 'id' });
       if (error) throw new Error(error.message);
     });
 
     // Before inserting new rows, try to match exact (level,name) with bullet variants to avoid unique collisions.
-    const converted = 0;
     const trulyNew: any[] = [];
     for (const r of newRows) {
       const lvl = r.topic_level;
@@ -220,8 +246,13 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
       if (error) throw new Error(error.message);
       if (maybe?.id) {
-        existingUpdates.push({ ...r, id: maybe.id });
-        usedProdIds.add(maybe.id);
+        if (usedProdIds.has(maybe.id)) {
+          // If we've already updated this prod row in this run, treat this as truly new
+          trulyNew.push(r);
+        } else {
+          existingUpdates.push({ ...r, id: maybe.id });
+          usedProdIds.add(maybe.id);
+        }
       } else {
         trulyNew.push(r);
       }
@@ -230,7 +261,7 @@ export async function POST(request: NextRequest) {
     // Upsert any converted rows
     if (existingUpdates.length) {
       await chunk(existingUpdates, async (c) => {
-        const { error } = await sb.from('curriculum_topics').upsert(c, { onConflict: 'id' });
+        const { error } = await sb.from('curriculum_topics').upsert(dedupeById(c), { onConflict: 'id' });
         if (error) throw new Error(error.message);
       });
     }
