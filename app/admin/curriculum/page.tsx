@@ -183,6 +183,7 @@ export default function CurriculumOpsPage() {
 
   const [embLoading, setEmbLoading] = useState(false);
   const [embResult, setEmbResult] = useState<any>(null);
+  const isBusy = promoteLoading || embLoading || compareLoading;
 
   const runRebuildEmbeddings = async () => {
     if (!selectedSubject) return;
@@ -264,6 +265,28 @@ export default function CurriculumOpsPage() {
           </button>
         </div>
       </div>
+
+      {(promoteLoading || embLoading || compareLoading) && (
+        <div
+          className="admin-card"
+          style={{
+            padding: 14,
+            marginBottom: 16,
+            borderColor: 'rgba(0,245,255,0.25)',
+            background: 'rgba(0,245,255,0.06)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <div className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
+          <div style={{ color: '#94A3B8', fontSize: 13 }}>
+            {promoteLoading && <span>Promoting subject…</span>}
+            {!promoteLoading && embLoading && <span>Rebuilding embeddings…</span>}
+            {!promoteLoading && !embLoading && compareLoading && <span>Comparing staging vs production…</span>}
+          </div>
+        </div>
+      )}
 
       <div className="admin-card" style={{ padding: 16, marginBottom: 16 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
@@ -355,18 +378,18 @@ export default function CurriculumOpsPage() {
             </h3>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               {selectedSubject && (
-                <button className="action-button" onClick={runCompare} disabled={compareLoading}>
-                  🧮 Compare
+                <button className="action-button" onClick={runCompare} disabled={isBusy}>
+                  {compareLoading ? '🧮 Comparing…' : '🧮 Compare'}
                 </button>
               )}
               {selectedSubject && (
-                <button className="action-button" onClick={runPromote} disabled={promoteLoading}>
-                  🚀 Promote
+                <button className="action-button" onClick={runPromote} disabled={isBusy}>
+                  {promoteLoading ? '🚀 Promoting…' : '🚀 Promote'}
                 </button>
               )}
               {selectedSubject && env === 'production' && (
-                <button className="action-button" onClick={runRebuildEmbeddings} disabled={embLoading}>
-                  🧠 Embeddings
+                <button className="action-button" onClick={runRebuildEmbeddings} disabled={isBusy}>
+                  {embLoading ? '🧠 Rebuilding…' : '🧠 Embeddings'}
                 </button>
               )}
               <div style={{ color: '#64748B', fontSize: 12 }}>{loadingTopics ? 'Loading…' : `${topics.length} topics`}</div>
