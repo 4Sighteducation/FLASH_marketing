@@ -151,6 +151,34 @@ export default function CurriculumOpsPage() {
     }
   };
 
+  const [embLoading, setEmbLoading] = useState(false);
+  const [embResult, setEmbResult] = useState<any>(null);
+
+  const runRebuildEmbeddings = async () => {
+    if (!selectedSubject) return;
+    const ok = window.confirm(
+      `Rebuild embeddings for ${selectedSubject.subject_code} (${selectedSubject.subject_name}) in PRODUCTION?\n\nThis triggers a Supabase Edge Function and may take 1–3 minutes.`
+    );
+    if (!ok) return;
+    setEmbLoading(true);
+    setEmbResult(null);
+    setError(null);
+    try {
+      const res = await adminFetch<any>(`/api/admin/curriculum/embeddings`, {
+        method: 'POST',
+        body: JSON.stringify({
+          exam_board_subject_id: selectedSubject.id,
+          delete_first: true,
+        }),
+      });
+      setEmbResult(res);
+    } catch (e: any) {
+      setError(e?.message || 'Embeddings rebuild failed');
+    } finally {
+      setEmbLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadSubjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -304,6 +332,11 @@ export default function CurriculumOpsPage() {
                   🚀 Promote
                 </button>
               )}
+              {selectedSubject && env === 'production' && (
+                <button className="action-button" onClick={runRebuildEmbeddings} disabled={embLoading}>
+                  🧠 Embeddings
+                </button>
+              )}
               <div style={{ color: '#64748B', fontSize: 12 }}>{loadingTopics ? 'Loading…' : `${topics.length} topics`}</div>
             </div>
           </div>
@@ -379,6 +412,16 @@ export default function CurriculumOpsPage() {
                     <b>{promoteResult.parentLinksUpdated}</b> • cleanup deleted: <b>{promoteResult.cleanup?.deletedRemoved ?? 0}</b>
                   </div>
                   {promoteResult.note && <div style={{ marginTop: 8, color: '#64748B', fontSize: 12 }}>{promoteResult.note}</div>}
+                </div>
+              )}
+
+              {embResult?.ok && (
+                <div style={{ marginTop: 14, padding: 14, borderRadius: 12, border: '1px solid rgba(0,245,255,0.18)', background: 'rgba(0,245,255,0.06)' }}>
+                  <div style={{ color: '#00F5FF', fontWeight: 900 }}>Embeddings rebuilt</div>
+                  <div style={{ marginTop: 8, color: '#94A3B8', fontSize: 12 }}>
+                    upserted: <b>{embResult.upserted}</b> • topics: <b>{embResult.total_topics}</b>
+                  </div>
+                  {embResult.note && <div style={{ marginTop: 8, color: '#64748B', fontSize: 12 }}>{embResult.note}</div>}
                 </div>
               )}
             </div>
