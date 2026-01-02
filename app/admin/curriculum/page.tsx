@@ -474,7 +474,15 @@ export default function CurriculumOpsPage() {
                 <div style={{ marginTop: 14, padding: 14, borderRadius: 12, border: '1px solid rgba(0,245,255,0.18)', background: 'rgba(0,245,255,0.06)' }}>
                   <div style={{ color: '#00F5FF', fontWeight: 900 }}>Embeddings rebuilt</div>
                   <div style={{ marginTop: 8, color: '#94A3B8', fontSize: 12 }}>
-                    upserted: <b>{embResult.upserted}</b> • topics: <b>{embResult.total_topics}</b>
+                    upserted: <b>{embResult.upserted}</b> • topics: <b>{embResult.total_topics}</b> • duration:{' '}
+                    <b>{typeof embResult.duration_ms === 'number' ? `${Math.round(embResult.duration_ms / 1000)}s` : '—'}</b>
+                  </div>
+                  <div style={{ marginTop: 6, color: '#64748B', fontSize: 12 }}>
+                    model: <b>{embResult.model || '—'}</b> • batches: <b>{embResult.batches ?? '—'}</b> • batch size: <b>{embResult.batch_size ?? '—'}</b>
+                  </div>
+                  <div style={{ marginTop: 6, color: '#64748B', fontSize: 12 }}>
+                    metadata rows before: <b>{embResult.existing_metadata_rows_before ?? '—'}</b> • after:{' '}
+                    <b>{embResult.metadata_rows_after ?? '—'}</b>
                   </div>
                   {embResult.note && <div style={{ marginTop: 8, color: '#64748B', fontSize: 12 }}>{embResult.note}</div>}
                 </div>
