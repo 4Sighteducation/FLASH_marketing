@@ -74,6 +74,7 @@ export default function AdminLayout({
         <h1 className="admin-title">⚡ FLASH Admin</h1>
         <div className="admin-nav-links">
           <a href="/admin" className="nav-link">Dashboard</a>
+          <a href="/admin/curriculum" className="nav-link">Curriculum</a>
           <a href="/admin/users" className="nav-link">Users</a>
           <a href="/admin/waitlist" className="nav-link">Waitlist</a>
           <a href="/admin/test-tools" className="nav-link">Ops Tools</a>

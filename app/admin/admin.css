@@ -69,6 +69,42 @@
   background: rgba(0, 245, 255, 0.1);
 }
 
+.admin-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+}
+
+.admin-select {
+  background: rgba(0, 245, 255, 0.08);
+  border: 1px solid rgba(0, 245, 255, 0.25);
+  color: #E2E8F0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.admin-select:focus {
+  outline: none;
+  border-color: rgba(0, 245, 255, 0.55);
+}
+
+.admin-subject {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-subject:hover {
+  border-color: rgba(0, 245, 255, 0.35);
+  background: rgba(0, 245, 255, 0.06);
+  transform: translateX(1px);
+}
+
 .nav-link-back {
   color: #64748B;
   text-decoration: none;
