@@ -62,10 +62,11 @@ async function fetchAll<T>(sb: any, table: string, select: string, filters: (q: 
 }
 
 export async function POST(request: NextRequest) {
+  let runId: string | undefined;
   try {
     const token = parseBearerToken(request.headers.get('authorization'));
     if (!token) return NextResponse.json({ error: 'Missing bearer token' }, { status: 401 });
-    await requireAdminFromBearerToken(token);
+    const adminUser = await requireAdminFromBearerToken(token);
 
     const body = (await request.json().catch(() => ({}))) as PromoteBody;
     const board = String(body.board || '').trim().toUpperCase();
@@ -78,6 +79,23 @@ export async function POST(request: NextRequest) {
     }
 
     const sb = getServiceClient();
+
+    // Log run start
+    const { data: runRow, error: runErr } = await sb
+      .from('curriculum_ops_runs')
+      .insert({
+        action: 'promote',
+        status: 'running',
+        exam_board: board,
+        qualification_level: qual,
+        subject_code: subjectCode,
+        requested_by_email: adminUser.email,
+        started_at: new Date().toISOString(),
+      })
+      .select('id')
+      .maybeSingle();
+    if (runErr) return NextResponse.json({ error: runErr.message }, { status: 500 });
+    runId = runRow?.id as string | undefined;
 
     // Resolve production FK ids
     const { data: eb, error: ebErr } = await sb.from('exam_boards').select('id,code').eq('code', board).maybeSingle();
@@ -330,7 +348,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    const payload = {
       ok: true,
       productionSubjectId: prodSub.id,
       stagingSubjectId: stgSub.id,
@@ -339,9 +357,33 @@ export async function POST(request: NextRequest) {
       parentLinksUpdated,
       cleanup: { deletedRemoved, keptRemoved },
       note: 'Embeddings regeneration is intentionally not wired to this button yet (next step).',
-    });
+    };
+
+    if (runId) {
+      await sb
+        .from('curriculum_ops_runs')
+        .update({
+          status: 'success',
+          finished_at: new Date().toISOString(),
+          summary_json: payload,
+        })
+        .eq('id', runId);
+    }
+
+    return NextResponse.json(payload);
   } catch (e: any) {
     const msg = typeof e?.message === 'string' ? e.message : 'Unauthorized';
+    try {
+      if (runId) {
+        const sb2 = getServiceClient();
+        await sb2
+          .from('curriculum_ops_runs')
+          .update({ status: 'error', finished_at: new Date().toISOString(), error_text: msg })
+          .eq('id', runId);
+      }
+    } catch {
+      // ignore logging failures
+    }
     const status = msg === 'Forbidden' ? 403 : 500;
     return NextResponse.json({ error: msg }, { status });
   }

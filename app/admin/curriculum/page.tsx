@@ -22,6 +22,20 @@ type TopicRow = {
   sort_order?: number | null;
 };
 
+type OpsRunRow = {
+  id: string;
+  action: string;
+  status: string;
+  subject_code: string | null;
+  exam_board: string | null;
+  qualification_level: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  requested_by_email: string | null;
+  error_text: string | null;
+  summary_json: any;
+};
+
 const BOARDS = ['AQA', 'OCR', 'EDEXCEL', 'WJEC', 'EDUQAS', 'CCEA', 'SQA'];
 const QUALS = [
   'A_LEVEL',
@@ -59,6 +73,8 @@ export default function CurriculumOpsPage() {
   const [compareLoading, setCompareLoading] = useState(false);
   const [compare, setCompare] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [runs, setRuns] = useState<OpsRunRow[]>([]);
+  const [runsLoading, setRunsLoading] = useState(false);
 
   const loadSubjects = async () => {
     setError(null);
@@ -76,6 +92,19 @@ export default function CurriculumOpsPage() {
       setSubjects([]);
     } finally {
       setLoadingSubjects(false);
+    }
+  };
+
+  const loadRuns = async (subjectCode?: string) => {
+    setRunsLoading(true);
+    try {
+      const qs = subjectCode ? `?subjectCode=${encodeURIComponent(subjectCode)}` : '';
+      const res = await adminFetch<{ rows: OpsRunRow[] }>(`/api/admin/curriculum/runs${qs}`);
+      setRuns(res.rows || []);
+    } catch {
+      setRuns([]);
+    } finally {
+      setRunsLoading(false);
     }
   };
 
@@ -144,6 +173,7 @@ export default function CurriculumOpsPage() {
       }
       // Refresh compare snapshot
       await runCompare();
+      await loadRuns(selectedSubject.subject_code);
     } catch (e: any) {
       setError(e?.message || 'Promote failed');
     } finally {
@@ -172,6 +202,7 @@ export default function CurriculumOpsPage() {
         }),
       });
       setEmbResult(res);
+      await loadRuns(selectedSubject.subject_code);
     } catch (e: any) {
       setError(e?.message || 'Embeddings rebuild failed');
     } finally {
@@ -301,6 +332,7 @@ export default function CurriculumOpsPage() {
                 onClick={() => {
                   setSelectedSubject(s);
                   loadTopics(s);
+                  loadRuns(s.subject_code);
                 }}
                 style={{ textAlign: 'left', opacity: selectedSubject?.id === s.id ? 1 : 0.9 }}
               >
@@ -424,6 +456,38 @@ export default function CurriculumOpsPage() {
                   {embResult.note && <div style={{ marginTop: 8, color: '#64748B', fontSize: 12 }}>{embResult.note}</div>}
                 </div>
               )}
+
+              <div style={{ marginTop: 14, padding: 14, borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <div style={{ color: '#E2E8F0', fontWeight: 900 }}>Recent runs</div>
+                  <button className="action-button" onClick={() => loadRuns(selectedSubject.subject_code)} disabled={runsLoading}>
+                    🧾 Refresh logs
+                  </button>
+                </div>
+                <div style={{ marginTop: 10, maxHeight: 220, overflow: 'auto', display: 'grid', gap: 8 }}>
+                  {runsLoading && <div style={{ color: '#94A3B8', fontSize: 12 }}>Loading…</div>}
+                  {!runsLoading && runs.length === 0 && <div style={{ color: '#64748B', fontSize: 12 }}>No runs yet for this subject.</div>}
+                  {runs.map((r) => (
+                    <div key={r.id} style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: 10 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                        <div style={{ color: '#00F5FF', fontFamily: 'monospace', fontWeight: 800 }}>
+                          {r.action} • {r.status}
+                        </div>
+                        <div style={{ color: '#64748B', fontSize: 12 }}>
+                          {r.started_at ? new Date(r.started_at).toLocaleString() : ''}
+                        </div>
+                      </div>
+                      {r.requested_by_email && <div style={{ marginTop: 6, color: '#94A3B8', fontSize: 12 }}>by {r.requested_by_email}</div>}
+                      {r.error_text && <div style={{ marginTop: 6, color: '#FF006E', fontSize: 12 }}>{r.error_text}</div>}
+                      {r.summary_json && (
+                        <pre style={{ marginTop: 8, whiteSpace: 'pre-wrap', color: '#94A3B8', fontSize: 11 }}>
+{JSON.stringify(r.summary_json, null, 2)}
+                        </pre>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>
