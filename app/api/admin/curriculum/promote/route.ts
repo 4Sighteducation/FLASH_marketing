@@ -146,42 +146,6 @@ export async function POST(request: NextRequest) {
     );
     if (!stgTopics.length) return NextResponse.json({ error: 'No staging topics found' }, { status: 400 });
 
-    // Guardrail: production enforces uniqueness on (exam_board_subject_id, topic_name, topic_level)
-    // If staging has duplicates (same level + same trimmed name), promotion cannot be done safely.
-    const seenLevelName = new Map<string, string>(); // key -> first topic_code
-    const dupLevelName: Array<{ topic_level: number; topic_name: string; codes: string[] }> = [];
-    for (const t of stgTopics) {
-      const nameKey = `${t.topic_level}::${String(t.topic_name || '').replace(/\s+/g, ' ').trim()}`;
-      const prev = seenLevelName.get(nameKey);
-      if (prev) {
-        const existing = dupLevelName.find((d) => `${d.topic_level}::${d.topic_name}` === nameKey);
-        if (existing) existing.codes.push(t.topic_code);
-        else dupLevelName.push({ topic_level: t.topic_level, topic_name: String(t.topic_name || '').replace(/\s+/g, ' ').trim(), codes: [prev, t.topic_code] });
-      } else {
-        seenLevelName.set(nameKey, t.topic_code);
-      }
-    }
-    if (dupLevelName.length) {
-      if (runId) {
-        await sb
-          .from('curriculum_ops_runs')
-          .update({
-            status: 'error',
-            finished_at: new Date().toISOString(),
-            error_text: 'Staging has duplicate (topic_level, topic_name) values; cannot promote safely.',
-            summary_json: { duplicates: dupLevelName.slice(0, 50) },
-          })
-          .eq('id', runId);
-      }
-      return NextResponse.json(
-        {
-          error: 'Staging has duplicate topic names at the same level (production unique constraint would be violated). Fix staging/scraper, then retry.',
-          duplicates: dupLevelName.slice(0, 50),
-        },
-        { status: 400 }
-      );
-    }
-
     // Fetch production topics
     type ProdTopic = { id: string; topic_code: string | null; topic_name: string | null; topic_level: number | null };
     const prodTopics = await fetchAll<ProdTopic>(
@@ -322,19 +286,18 @@ export async function POST(request: NextRequest) {
 
     // Insert truly new rows
     await chunk(trulyNew, async (c) => {
-      // Extra safety: dedupe within the chunk on the production unique key
-      const keyToRow = new Map<string, any>();
+      // Dedupe within chunk by topic_code (staging guard should already guarantee uniqueness)
+      const codeToRow = new Map<string, any>();
       for (const r of c) {
-        const k = `${r.exam_board_subject_id}::${r.topic_level}::${String(r.topic_name || '').replace(/\s+/g, ' ').trim()}`;
-        if (!keyToRow.has(k)) keyToRow.set(k, r);
+        const code = String(r.topic_code || '').trim();
+        if (!code) continue;
+        if (!codeToRow.has(code)) codeToRow.set(code, r);
       }
-      const rows = Array.from(keyToRow.values());
+      const rows = Array.from(codeToRow.values());
 
-      // Use upsert on the unique constraint columns so we never hard-fail if a row already exists.
-      const { data, error } = await sb
-        .from('curriculum_topics')
-        .upsert(rows, { onConflict: 'exam_board_subject_id,topic_name,topic_level' })
-        .select('id,topic_code');
+      // Now that production no longer has the (level,name) unique constraint, a plain insert is safe here.
+      // Uniqueness for promotions is provided by stable topic_code.
+      const { data, error } = await sb.from('curriculum_topics').insert(rows).select('id,topic_code');
       if (error) throw new Error(error.message);
       (data || []).forEach((row: any) => {
         if (row?.id && row?.topic_code) prodIdByCode.set(row.topic_code, row.id);
