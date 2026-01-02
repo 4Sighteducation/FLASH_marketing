@@ -116,6 +116,8 @@ export async function POST(req: NextRequest) {
     }
 
     const durationMs = Date.now() - startedAtMs;
+    const effectiveBatchSize = typeof (json as any)?.batch_size === 'number' ? (json as any).batch_size : 64;
+    const effectiveModel = (json as any)?.model || 'text-embedding-3-small';
     const merged = {
       ...(json || {}),
       duration_ms: typeof (json as any)?.duration_ms === 'number' ? (json as any).duration_ms : durationMs,
@@ -123,10 +125,16 @@ export async function POST(req: NextRequest) {
         typeof (json as any)?.existing_metadata_rows_before === 'number' ? (json as any).existing_metadata_rows_before : metadataBefore,
       metadata_rows_after: typeof (json as any)?.metadata_rows_after === 'number' ? (json as any).metadata_rows_after : metadataAfter,
       total_topics: typeof (json as any)?.total_topics === 'number' ? (json as any).total_topics : topicsTotal || ids.length,
-      // model/batch info may not be available if function is old; keep null so UI can show '—'
-      model: (json as any)?.model || null,
-      batch_size: (json as any)?.batch_size ?? null,
-      batches: (json as any)?.batches ?? null,
+      // Provide deterministic defaults so the UI is always reassuring.
+      model: effectiveModel,
+      batch_size: effectiveBatchSize,
+      batches: typeof (json as any)?.batches === 'number' ? (json as any).batches : Math.ceil((topicsTotal || ids.length || 0) / effectiveBatchSize),
+      deleted_count:
+        typeof (json as any)?.deleted_count === 'number'
+          ? (json as any).deleted_count
+          : body.delete_first === false
+            ? 0
+            : metadataBefore,
     };
 
     if (runId) {

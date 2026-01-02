@@ -484,6 +484,9 @@ export default function CurriculumOpsPage() {
                     metadata rows before: <b>{embResult.existing_metadata_rows_before ?? '—'}</b> • after:{' '}
                     <b>{embResult.metadata_rows_after ?? '—'}</b>
                   </div>
+                  <div style={{ marginTop: 6, color: '#64748B', fontSize: 12 }}>
+                    deleted before rebuild: <b>{embResult.deleted_count ?? '—'}</b>
+                  </div>
                   {embResult.note && <div style={{ marginTop: 8, color: '#64748B', fontSize: 12 }}>{embResult.note}</div>}
                 </div>
               )}
