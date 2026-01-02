@@ -85,6 +85,14 @@ const AdminLogin = () => {
         return;
       }
 
+      // Establish server-side admin gate cookie so /admin isn't publicly accessible.
+      if (data.session?.access_token) {
+        await fetch('/api/admin/session', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+        });
+      }
+
       router.push('/admin');
     } catch (error: any) {
       setError(error.message || 'Login failed');

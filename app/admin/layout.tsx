@@ -46,6 +46,12 @@ export default function AdminLayout({
   };
 
   const handleLogout = async () => {
+    // Clear server-side admin gate cookie
+    try {
+      await fetch('/api/admin/session', { method: 'DELETE' });
+    } catch {
+      // ignore
+    }
     await supabase.auth.signOut();
     router.push('/admin/login');
   };
