@@ -115,6 +115,42 @@ export default function CurriculumOpsPage() {
     }
   };
 
+  const [promoteLoading, setPromoteLoading] = useState(false);
+  const [promoteResult, setPromoteResult] = useState<any>(null);
+
+  const runPromote = async () => {
+    if (!selectedSubject) return;
+    const ok = window.confirm(
+      `Promote subject ${selectedSubject.subject_code} (${selectedSubject.subject_name}) from STAGING → PRODUCTION?\n\nThis updates production topics and may delete removed topics only if they have zero flashcards.`
+    );
+    if (!ok) return;
+    setPromoteLoading(true);
+    setPromoteResult(null);
+    setError(null);
+    try {
+      const res = await adminFetch<any>(`/api/admin/curriculum/promote`, {
+        method: 'POST',
+        body: JSON.stringify({
+          board,
+          qual,
+          subjectCode: selectedSubject.subject_code,
+          cleanupUnreferencedRemovedTopics: true,
+        }),
+      });
+      setPromoteResult(res);
+      // Refresh prod topics if we're currently viewing production
+      if (env === 'production') {
+        await loadTopics(selectedSubject);
+      }
+      // Refresh compare snapshot
+      await runCompare();
+    } catch (e: any) {
+      setError(e?.message || 'Promote failed');
+    } finally {
+      setPromoteLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadSubjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -263,6 +299,11 @@ export default function CurriculumOpsPage() {
                   🧮 Compare
                 </button>
               )}
+              {selectedSubject && (
+                <button className="action-button" onClick={runPromote} disabled={promoteLoading}>
+                  🚀 Promote
+                </button>
+              )}
               <div style={{ color: '#64748B', fontSize: 12 }}>{loadingTopics ? 'Loading…' : `${topics.length} topics`}</div>
             </div>
           </div>
@@ -327,6 +368,17 @@ export default function CurriculumOpsPage() {
                     counts by level: prod {JSON.stringify(compare.diff.countsByLevel.production)} • stg{' '}
                     {JSON.stringify(compare.diff.countsByLevel.staging)}
                   </div>
+                </div>
+              )}
+
+              {promoteResult?.ok && (
+                <div style={{ marginTop: 14, padding: 14, borderRadius: 12, border: '1px solid rgba(16,185,129,0.25)', background: 'rgba(16,185,129,0.06)' }}>
+                  <div style={{ color: '#10B981', fontWeight: 900 }}>Promotion complete</div>
+                  <div style={{ marginTop: 8, color: '#94A3B8', fontSize: 12 }}>
+                    staging topics: <b>{promoteResult.stagingTopics}</b> • production topics: <b>{promoteResult.productionTopicsAfter}</b> • parent links updated:{' '}
+                    <b>{promoteResult.parentLinksUpdated}</b> • cleanup deleted: <b>{promoteResult.cleanup?.deletedRemoved ?? 0}</b>
+                  </div>
+                  {promoteResult.note && <div style={{ marginTop: 8, color: '#64748B', fontSize: 12 }}>{promoteResult.note}</div>}
                 </div>
               )}
             </div>
