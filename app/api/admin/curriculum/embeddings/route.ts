@@ -95,6 +95,8 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         exam_board_subject_id,
         delete_first: body.delete_first !== false,
+        // Larger batches = fewer OpenAI requests = less chance of timeouts for big subjects (e.g. H481 ~800 topics).
+        batch_size: 256,
         run_id: runId,
       }),
     });
