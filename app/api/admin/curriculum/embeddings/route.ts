@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient, parseBearerToken, requireAdminFromBearerToken } from '../../../../../lib/server/adminApi';
 
+// Rebuilding embeddings can take > 60s for large subjects; allow longer execution on Vercel.
+export const maxDuration = 300;
+export const dynamic = 'force-dynamic';
+
 type Body = {
   exam_board_subject_id: string;
   delete_first?: boolean;
@@ -95,15 +99,25 @@ export async function POST(req: NextRequest) {
       }),
     });
 
-    const json = await res.json().catch(() => ({}));
+    // Edge function failures sometimes return non-JSON (or empty) bodies; capture both.
+    const rawText = await res.text().catch(() => '');
+    const json = rawText ? JSON.parse(rawText) : {};
     if (!res.ok) {
       if (runId) {
         await sb
           .from('curriculum_ops_runs')
-          .update({ status: 'error', finished_at: new Date().toISOString(), error_text: json?.error || `Edge function failed (${res.status})`, summary_json: json })
+          .update({
+            status: 'error',
+            finished_at: new Date().toISOString(),
+            error_text: (json as any)?.error || `Edge function failed (${res.status})`,
+            summary_json: json || { raw: rawText?.slice?.(0, 5000) },
+          })
           .eq('id', runId);
       }
-      return NextResponse.json({ error: json?.error || `Edge function failed (${res.status})`, details: json }, { status: 500 });
+      return NextResponse.json(
+        { error: (json as any)?.error || `Edge function failed (${res.status})`, details: json || { raw: rawText?.slice?.(0, 5000) } },
+        { status: 500 }
+      );
     }
 
     // Compute post-run coverage regardless of edge payload
