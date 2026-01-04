@@ -396,6 +396,16 @@ export default function CurriculumOpsPage() {
             </div>
           </div>
 
+          {selectedSubject && env === 'production' && topics.length >= 600 && (
+            <div style={{ marginTop: 10, color: '#94A3B8', fontSize: 12 }}>
+              Heads up: this subject has <b>{topics.length}</b> topics, so embedding rebuild can take a few minutes. If it repeatedly fails,
+              run the rebuild locally via the pipeline script (uses your local OpenAI key):
+              <div style={{ marginTop: 6, fontFamily: 'monospace', color: '#00F5FF' }}>
+                python scripts/promote_subject_and_embeddings.py --exam-board {board} --qualification {qual} --subject-code {selectedSubject.subject_code} --generate-embeddings
+              </div>
+            </div>
+          )}
+
           {!selectedSubject && <div style={{ color: '#94A3B8', marginTop: 12 }}>Select a subject to view topics.</div>}
 
           {selectedSubject && (

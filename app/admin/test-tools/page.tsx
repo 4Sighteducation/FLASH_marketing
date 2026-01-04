@@ -112,15 +112,24 @@ export default function TestTools() {
         <h3 style={{ color: '#E2E8F0', fontSize: '20px', marginBottom: '12px' }}>
           💻 Database Access
         </h3>
-        <a 
-          href="https://qkapwhyxcpgzahuemucg.supabase.co/project/default/editor" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="action-button"
-          style={{ display: 'inline-block', textDecoration: 'none' }}
-        >
-          Open Supabase SQL Editor →
-        </a>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <a
+            href="/admin/curriculum/"
+            className="action-button"
+            style={{ display: 'inline-block', textDecoration: 'none' }}
+          >
+            Open Curriculum Ops →
+          </a>
+          <a
+            href="https://supabase.com/dashboard/project/qkapwhyxcpgzahuemucg/sql"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="action-button"
+            style={{ display: 'inline-block', textDecoration: 'none' }}
+          >
+            Open Supabase SQL Editor →
+          </a>
+        </div>
       </div>
     </div>
   );
