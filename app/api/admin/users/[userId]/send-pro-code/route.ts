@@ -7,7 +7,10 @@ function randomCode(groups = 4, groupLen = 4): { pretty: string; normalized: str
   const bytes = new Uint8Array(groups * groupLen);
   crypto.getRandomValues(bytes);
   let raw = '';
-  for (const b of bytes) raw += alphabet[b % alphabet.length];
+  for (let i = 0; i < bytes.length; i++) {
+    const b = bytes[i]!;
+    raw += alphabet[b % alphabet.length];
+  }
   const parts: string[] = [];
   for (let i = 0; i < groups; i++) parts.push(raw.slice(i * groupLen, (i + 1) * groupLen));
   const pretty = parts.join('-');
