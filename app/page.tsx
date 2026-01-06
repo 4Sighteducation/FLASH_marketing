@@ -247,6 +247,23 @@ export default function Home() {
             Over 10,000 exam specification topics and subtopics across all UK exam boards (AQA, Edexcel, OCR, WJEC, CCEA, SQA).
             <br />Plus thousands of past paper questions, mark schemes, and examiners reports.
           </p>
+
+          <div style={{ marginTop: '2rem' }}>
+            <div className={styles.subjectsGrid} style={{ marginTop: 0 }}>
+              <a className={styles.subjectCard} href="/gcse-flashcards">
+                <h3>🎓 GCSE Flashcards</h3>
+                <p>Specification-aligned revision by exam board & subject</p>
+              </a>
+              <a className={styles.subjectCard} href="/a-level-flashcards">
+                <h3>🏅 A-Level Flashcards</h3>
+                <p>Deep recall + exam technique for A-Level courses</p>
+              </a>
+              <a className={styles.subjectCard} href="/exam-boards/aqa">
+                <h3>🏛️ Exam Boards</h3>
+                <p>AQA • Edexcel • OCR (and more)</p>
+              </a>
+            </div>
+          </div>
           
           <div className={styles.subjectsGrid}>
             <a className={styles.subjectCard} href="/subjects/mathematics">

@@ -15,6 +15,36 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
+      url: 'https://fl4shcards.com/gcse-flashcards',
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: 'https://fl4shcards.com/a-level-flashcards',
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: 'https://fl4shcards.com/exam-boards/aqa',
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.75,
+    },
+    {
+      url: 'https://fl4shcards.com/exam-boards/edexcel',
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.75,
+    },
+    {
+      url: 'https://fl4shcards.com/exam-boards/ocr',
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.75,
+    },
+    {
       url: 'https://fl4shcards.com/subjects/mathematics',
       lastModified: new Date(),
       changeFrequency: 'weekly',

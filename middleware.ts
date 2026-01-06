@@ -8,6 +8,16 @@ function isAdminPath(pathname: string) {
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const host = req.headers.get('host') ?? '';
+
+  // Canonical host redirect: www -> non-www (keeps indexing consistent)
+  // Only apply on production hosts to avoid breaking preview deployments.
+  if (host === 'www.fl4shcards.com') {
+    const url = req.nextUrl.clone();
+    url.host = 'fl4shcards.com';
+    url.protocol = 'https:';
+    return NextResponse.redirect(url, 308);
+  }
 
   // Allow login page (and Next internals)
   if (pathname === '/admin/login' || pathname.startsWith('/admin/login/')) return NextResponse.next();
@@ -27,6 +37,7 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  // Run on everything so we can enforce canonical host, plus admin auth.
+  matcher: ['/:path*'],
 };
 
