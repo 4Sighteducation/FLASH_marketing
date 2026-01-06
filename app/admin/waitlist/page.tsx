@@ -15,6 +15,8 @@ export default function WaitlistPage() {
   const limit = 50;
   const [autoProDays, setAutoProDays] = useState('365');
   const TOP_N = 50;
+  const [addEmail, setAddEmail] = useState('');
+  const [addNote, setAddNote] = useState('');
 
   const fetchRows = async (nextOffset = 0) => {
     setLoading(true);
@@ -68,6 +70,26 @@ export default function WaitlistPage() {
     }
   };
 
+  const addTester = async () => {
+    const email = addEmail.trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      alert('Enter a valid email');
+      return;
+    }
+    try {
+      await adminFetch(`/api/admin/waitlist/add`, {
+        method: 'POST',
+        body: JSON.stringify({ email, days: Number(autoProDays) || 365, note: addNote.trim() }),
+      });
+      setAddEmail('');
+      setAddNote('');
+      await fetchRows(0);
+      alert('Tester added. They must create an account using the same email to auto-unlock Pro.');
+    } catch (e: any) {
+      alert(e?.message || 'Failed to add tester');
+    }
+  };
+
   return (
     <div>
       <h2 className="section-title">📧 Waitlist</h2>
@@ -106,6 +128,27 @@ export default function WaitlistPage() {
         </button>
       </div>
 
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+        <span style={{ color: '#94A3B8', fontSize: 14, fontWeight: 700 }}>Add tester (auto-Pro):</span>
+        <input
+          className="search-input"
+          style={{ minWidth: 260 }}
+          placeholder="email@example.com"
+          value={addEmail}
+          onChange={(e) => setAddEmail(e.target.value)}
+        />
+        <input
+          className="search-input"
+          style={{ minWidth: 220 }}
+          placeholder="note (optional)"
+          value={addNote}
+          onChange={(e) => setAddNote(e.target.value)}
+        />
+        <button className="action-button" onClick={addTester} disabled={loading}>
+          ➕ Add tester
+        </button>
+      </div>
+
       <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
         <button className="action-button" disabled={loading || !canPrev} onClick={() => fetchRows(Math.max(offset - limit, 0))}>
           ← Prev
@@ -121,7 +164,7 @@ export default function WaitlistPage() {
             <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <th style={{ padding: 12 }}>Email</th>
               <th style={{ padding: 12 }}>Position</th>
-              <th style={{ padding: 12 }}>Top 20</th>
+              <th style={{ padding: 12 }}>Top {TOP_N}</th>
               <th style={{ padding: 12 }}>Auto Pro</th>
               <th style={{ padding: 12 }}>Granted</th>
               <th style={{ padding: 12 }}>Source</th>

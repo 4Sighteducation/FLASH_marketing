@@ -36,12 +36,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get current count to determine position
+    // Get current count to determine position + enforce a public cap.
     const { count } = await supabase
       .from('waitlist')
       .select('*', { count: 'exact', head: true });
 
     const position = (count || 0) + 1;
+    // Public waitlist cap (admin can still add testers via admin routes).
+    const PUBLIC_CAP = Number(process.env.WAITLIST_PUBLIC_CAP || '500');
+    if (Number.isFinite(PUBLIC_CAP) && PUBLIC_CAP > 0 && position > PUBLIC_CAP) {
+      return NextResponse.json(
+        { error: `Waitlist is currently full (${PUBLIC_CAP}).` },
+        { status: 400 }
+      );
+    }
     // Extended beta: first N waitlist users are eligible for 1 year of Pro (auto-grant on account creation).
     const TOP_N = 50;
     const isTopN = position <= TOP_N;
