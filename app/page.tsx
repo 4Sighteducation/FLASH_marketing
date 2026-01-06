@@ -538,7 +538,7 @@ export default function Home() {
                 <a href="#features">Features</a>
                 <a href="#subjects">Subjects</a>
                 <a href="#pricing">Pricing</a>
-                <a href="https://app.fl4shcards.com">Web App</a>
+                <a href="/download">Download</a>
               </div>
               <div>
                 <h4>Download</h4>

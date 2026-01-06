@@ -17,9 +17,9 @@ export default function StoreBadges(props: { note?: string }) {
         <a className={styles.badgeLink} href="/download" aria-label="Get it on Google Play (opens details)">
           <img
             className={styles.badge}
-            src="/flash_assets/store/google-play-badge.svg"
+            src="/flash_assets/store/google-play-badge.png"
             alt="Get it on Google Play"
-            width={180}
+            width={155}
             height={60}
             loading="lazy"
           />

@@ -17,8 +17,8 @@
 }
 
 .badge {
-  width: 180px;
   height: 60px;
+  width: auto;
   display: block;
 }
 

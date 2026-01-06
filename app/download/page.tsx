@@ -29,12 +29,6 @@ export default function Page() {
           downloads are available.
         </p>
       </SeoCard>
-
-      <SeoCard title="Prefer the web app?">
-        <p>
-          You can still use the web app anytime at <a href="https://app.fl4shcards.com">app.fl4shcards.com</a>.
-        </p>
-      </SeoCard>
     </SeoPage>
   )
 }

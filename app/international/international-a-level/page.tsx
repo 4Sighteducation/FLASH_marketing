@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import SeoPage, { buildSeoMetadata, SeoCard } from '../../components/SeoPage'
+import StoreBadges from '../../components/StoreBadges'
 
 export const metadata: Metadata = buildSeoMetadata({
   title: 'International A-Level Flashcards | Revision | FL4SH',
@@ -18,10 +19,8 @@ export default function Page() {
         { label: 'International', href: '/international' },
         { label: 'International A-Level', href: '/international/international-a-level' },
       ]}
-      links={[
-        { label: 'International GCSE (iGCSE)', href: '/international/igcse' },
-        { label: 'Try the web app', href: 'https://app.fl4shcards.com' },
-      ]}
+      topCta={<StoreBadges />}
+      links={[{ label: 'International GCSE (iGCSE)', href: '/international/igcse' }]}
     >
       <SeoCard title="Depth + exam technique">
         <p>
