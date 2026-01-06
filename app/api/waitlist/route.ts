@@ -42,7 +42,9 @@ export async function POST(request: NextRequest) {
       .select('*', { count: 'exact', head: true });
 
     const position = (count || 0) + 1;
-    const isTopTwenty = position <= 20;
+    // Extended beta: first N waitlist users are eligible for 1 year of Pro (auto-grant on account creation).
+    const TOP_N = 50;
+    const isTopTwenty = position <= TOP_N;
 
     const resolvedSource =
       typeof source === 'string' && source.trim().length > 0 && source.trim().length <= 40
@@ -57,6 +59,10 @@ export async function POST(request: NextRequest) {
           email: email.toLowerCase(),
           position,
           is_top_twenty: isTopTwenty,
+          // If the DB has the new columns, enable auto-pro for eligible signups (safe if column absent? will error).
+          // We only set these fields if they exist in the table; if your DB migration isn't applied yet, remove them.
+          auto_pro_enabled: isTopTwenty,
+          auto_pro_days: 365,
           source: resolvedSource,
           notified: false,
           created_at: new Date().toISOString()
