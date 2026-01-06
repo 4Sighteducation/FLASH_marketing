@@ -13,6 +13,8 @@ export default function WaitlistPage() {
   const [loading, setLoading] = useState(false);
   const [offset, setOffset] = useState(0);
   const limit = 50;
+  const [autoProDays, setAutoProDays] = useState('365');
+  const TOP_N = 50;
 
   const fetchRows = async (nextOffset = 0) => {
     setLoading(true);
@@ -41,6 +43,31 @@ export default function WaitlistPage() {
   const canPrev = offset > 0;
   const canNext = offset + limit < count;
 
+  const toggleAutoPro = async (rowId: string, enabled: boolean) => {
+    try {
+      await adminFetch(`/api/admin/waitlist/${rowId}/auto-pro`, {
+        method: 'POST',
+        body: JSON.stringify({ enabled, days: Number(autoProDays) || 365 }),
+      });
+      await fetchRows(offset);
+    } catch (e: any) {
+      alert(e?.message || 'Failed to update auto-Pro');
+    }
+  };
+
+  const enableTopN = async (enabled: boolean) => {
+    if (!confirm(`${enabled ? 'Enable' : 'Disable'} auto Pro for ALL top-${TOP_N} waitlist entries?`)) return;
+    try {
+      await adminFetch(`/api/admin/waitlist/auto-pro-top-n`, {
+        method: 'POST',
+        body: JSON.stringify({ enabled, days: Number(autoProDays) || 365, topN: TOP_N }),
+      });
+      await fetchRows(0);
+    } catch (e: any) {
+      alert(e?.message || `Failed to update top-${TOP_N} auto-Pro`);
+    }
+  };
+
   return (
     <div>
       <h2 className="section-title">📧 Waitlist</h2>
@@ -62,6 +89,23 @@ export default function WaitlistPage() {
         {count} total • showing {rows.length} • offset {offset}
       </div>
 
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+        <span style={{ color: '#94A3B8', fontSize: 14, fontWeight: 700 }}>Auto-Pro duration (days):</span>
+        <input
+          className="search-input"
+          style={{ maxWidth: 140 }}
+          value={autoProDays}
+          onChange={(e) => setAutoProDays(e.target.value)}
+          inputMode="numeric"
+        />
+        <button className="action-button" onClick={() => enableTopN(true)}>
+          ✅ Enable auto Pro for Top {TOP_N}
+        </button>
+        <button className="action-button" onClick={() => enableTopN(false)} style={{ opacity: 0.8 }}>
+          ⛔ Disable auto Pro for Top {TOP_N}
+        </button>
+      </div>
+
       <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
         <button className="action-button" disabled={loading || !canPrev} onClick={() => fetchRows(Math.max(offset - limit, 0))}>
           ← Prev
@@ -78,9 +122,12 @@ export default function WaitlistPage() {
               <th style={{ padding: 12 }}>Email</th>
               <th style={{ padding: 12 }}>Position</th>
               <th style={{ padding: 12 }}>Top 20</th>
+              <th style={{ padding: 12 }}>Auto Pro</th>
+              <th style={{ padding: 12 }}>Granted</th>
               <th style={{ padding: 12 }}>Source</th>
               <th style={{ padding: 12 }}>Notified</th>
               <th style={{ padding: 12 }}>Created</th>
+              <th style={{ padding: 12 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -89,14 +136,31 @@ export default function WaitlistPage() {
                 <td style={{ padding: 12 }}>{r.email || '—'}</td>
                 <td style={{ padding: 12 }}>{r.position ?? '—'}</td>
                 <td style={{ padding: 12 }}>{r.is_top_twenty ? 'Yes' : 'No'}</td>
+                <td style={{ padding: 12 }}>{r.auto_pro_enabled ? `Yes (${r.auto_pro_days || 365}d)` : 'No'}</td>
+                <td style={{ padding: 12 }}>{r.auto_pro_granted_at ? new Date(r.auto_pro_granted_at).toLocaleString() : '—'}</td>
                 <td style={{ padding: 12 }}>{r.source || '—'}</td>
                 <td style={{ padding: 12 }}>{r.notified ? 'Yes' : 'No'}</td>
                 <td style={{ padding: 12 }}>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
+                <td style={{ padding: 12 }}>
+                  {r.id ? (
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <button
+                        className="action-button"
+                        onClick={() => toggleAutoPro(String(r.id), !r.auto_pro_enabled)}
+                        style={{ padding: '8px 10px' }}
+                      >
+                        {r.auto_pro_enabled ? 'Disable auto Pro' : 'Enable auto Pro'}
+                      </button>
+                    </div>
+                  ) : (
+                    '—'
+                  )}
+                </td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td style={{ padding: 12, color: '#94A3B8' }} colSpan={6}>
+                <td style={{ padding: 12, color: '#94A3B8' }} colSpan={9}>
                   No rows.
                 </td>
               </tr>

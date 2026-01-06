@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const position = (count || 0) + 1;
     // Extended beta: first N waitlist users are eligible for 1 year of Pro (auto-grant on account creation).
     const TOP_N = 50;
-    const isTopTwenty = position <= TOP_N;
+    const isTopN = position <= TOP_N;
 
     const resolvedSource =
       typeof source === 'string' && source.trim().length > 0 && source.trim().length <= 40
@@ -58,7 +58,11 @@ export async function POST(request: NextRequest) {
         {
           email: email.toLowerCase(),
           position,
-          is_top_twenty: isTopTwenty,
+          // Keep legacy column for compatibility with existing tooling, but we're using TOP_N now.
+          is_top_twenty: isTopN,
+          // New columns (added in FLASH DB migration) that drive the auto-grant trigger.
+          auto_pro_enabled: isTopN,
+          auto_pro_days: 365,
           source: resolvedSource,
           notified: false,
           created_at: new Date().toISOString()
@@ -89,7 +93,7 @@ export async function POST(request: NextRequest) {
             personalizations: [
               {
                 to: [{ email: email.toLowerCase() }],
-                subject: isTopTwenty 
+                subject: isTopN
                   ? '🎉 You\'re in! FL4SH Pro FREE for 1 Year!' 
                   : '✨ You\'re on the FL4SH Early Access List!'
               }
@@ -101,15 +105,15 @@ export async function POST(request: NextRequest) {
             content: [
               {
                 type: 'text/html',
-                value: isTopTwenty
+                value: isTopN
                   ? `
-                    <h2>🎉 Congratulations! You're in the Top 20!</h2>
-                    <p>You're one of the first 20 people to join our early access list, which means you'll get <strong>FL4SH Pro FREE for an entire year</strong> when we launch on February 1st, 2025!</p>
+                    <h2>🎉 Congratulations! You're in the first ${TOP_N}!</h2>
+                    <p>You're one of the first ${TOP_N} people to join our early access list, which means you'll get <strong>FL4SH Pro FREE for an entire year</strong> when you create an account with this same email address.</p>
                     <h3>What happens next?</h3>
                     <ul>
-                      <li>We'll email you on launch day (Feb 1st) with your exclusive Pro code</li>
-                      <li>Download the app from App Store or Google Play</li>
-                      <li>Redeem your code for 1 year of Pro features</li>
+                      <li>Download the app from the App Store</li>
+                      <li>Create an account using this email</li>
+                      <li>Pro will unlock automatically (can take a minute; log out/in if needed)</li>
                     </ul>
                     <p>Thanks for being an early supporter!</p>
                     <p>The FL4SH Team<br>
@@ -144,7 +148,7 @@ export async function POST(request: NextRequest) {
             personalizations: [
               {
                 to: [{ email: 'admin@4sighteducation.com' }],
-                subject: `New Waitlist Signup #${position}${isTopTwenty ? ' 🎉 TOP 20!' : ''} (${resolvedSource})`
+                subject: `New Waitlist Signup #${position}${isTopN ? ` 🎉 TOP ${TOP_N}!` : ''} (${resolvedSource})`
               }
             ],
             from: {
@@ -158,7 +162,7 @@ export async function POST(request: NextRequest) {
                   <h3>New Waitlist Signup</h3>
                   <p><strong>Email:</strong> ${email}</p>
                   <p><strong>Position:</strong> #${position}</p>
-                  <p><strong>Top 20:</strong> ${isTopTwenty ? 'YES 🎉' : 'No'}</p>
+                  <p><strong>Top ${TOP_N}:</strong> ${isTopN ? 'YES 🎉' : 'No'}</p>
                   <p><strong>Source:</strong> ${resolvedSource}</p>
                   <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
                 `
@@ -175,9 +179,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       position,
-      isTopTwenty,
-      message: isTopTwenty 
-        ? 'You\'re in the top 20! Check your email for details.' 
+      isTopN,
+      message: isTopN
+        ? `You\'re in the top ${TOP_N}! Check your email for details.`
         : 'Successfully joined the waitlist!'
     });
 
