@@ -10,6 +10,7 @@ export type SeoPageProps = {
   breadcrumbs?: Breadcrumb[]
   children: React.ReactNode
   links?: Array<{ label: string; href: string }>
+  topCta?: React.ReactNode
 }
 
 export function SeoCard(props: { title: string; children: React.ReactNode }) {
@@ -52,6 +53,8 @@ export default function SeoPage(props: SeoPageProps) {
 
         <h1 className={styles.title}>{props.title}</h1>
         <p className={styles.subtitle}>{props.description}</p>
+
+        {props.topCta ? <div className={styles.links}>{props.topCta}</div> : null}
 
         {props.links?.length ? (
           <div className={styles.links}>

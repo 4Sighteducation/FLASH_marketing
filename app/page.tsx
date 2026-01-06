@@ -6,6 +6,7 @@ import Navigation from './components/Navigation'
 import LaunchBanner from './components/LaunchBanner'
 import ComingSoonButton from './components/ComingSoonButton'
 import AndroidBetaPopup from './components/AndroidBetaPopup'
+import StoreBadges from './components/StoreBadges'
 import styles from './page.module.css'
 
 export default function Home() {
@@ -155,6 +156,10 @@ export default function Home() {
               <a href="#features" className={`${styles.btn} ${styles.btnSecondary}`}>
                 See How It Works →
               </a>
+            </div>
+
+            <div style={{ marginTop: '1.25rem' }}>
+              <StoreBadges note="Apps launching February 2026 (download links coming soon)" />
             </div>
             
             <div className={styles.trustBadges}>
@@ -537,8 +542,8 @@ export default function Home() {
               </div>
               <div>
                 <h4>Download</h4>
-                <a href="#">iOS App</a>
-                <a href="#">Android App</a>
+                <a href="/download">iOS App (Feb 2026)</a>
+                <a href="/download">Android App (Feb 2026)</a>
                 <a href="/support">Support</a>
               </div>
               <div>

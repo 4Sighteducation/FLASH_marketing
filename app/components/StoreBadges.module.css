@@ -1,0 +1,29 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.badgeLink {
+  display: inline-flex;
+  text-decoration: none;
+}
+
+.badge {
+  width: 180px;
+  height: 60px;
+  display: block;
+}
+
+.note {
+  color: #94A3B8;
+  font-size: 0.95rem;
+}
+

@@ -9,6 +9,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
+      url: 'https://fl4shcards.com/download',
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
       url: 'https://fl4shcards.com/subjects/mathematics',
       lastModified: new Date(),
       changeFrequency: 'weekly',
