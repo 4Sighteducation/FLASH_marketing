@@ -14,6 +14,7 @@ export default function AdminLayout({
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoginPage, setIsLoginPage] = useState(false);
+  const [version, setVersion] = useState<string>('');
 
   useEffect(() => {
     // Check if we're on the login page
@@ -37,6 +38,19 @@ export default function AdminLayout({
       }
 
       setIsAdmin(true);
+
+      // Fetch deployed version info (helps debug stale deployments)
+      try {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        const res = await fetch('/api/admin/version', {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        const j = await res.json().catch(() => ({}));
+        if (res.ok && j?.commit) setVersion(String(j.commit).slice(0, 7));
+      } catch {
+        // ignore
+      }
     } catch (error) {
       console.error('Error checking admin access:', error);
       router.push('/admin/login');
@@ -78,6 +92,11 @@ export default function AdminLayout({
     <div className="admin-container">
       <nav className="admin-nav">
         <h1 className="admin-title">⚡ FLASH Admin</h1>
+        {version ? (
+          <span style={{ marginLeft: 10, color: '#64748B', fontSize: 12, fontWeight: 700 }}>
+            build {version}
+          </span>
+        ) : null}
         <div className="admin-nav-links">
           <a href="/admin" className="nav-link">Dashboard</a>
           <a href="/admin/curriculum" className="nav-link">Curriculum</a>
