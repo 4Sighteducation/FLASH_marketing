@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   creator: '4Sight Education Ltd',
   publisher: '4Sight Education Ltd',
   alternates: {
-    canonical: 'https://fl4shcards.com',
+    canonical: 'https://www.fl4shcards.com',
   },
   robots: {
     index: true,
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'FL4SH Flashcards - AI-Powered Revision for GCSE & A-Level',
     description: 'Ace your GCSEs & A-Levels with FL4SH flashcards. AI-generated revision cards, intelligent spaced repetition, and 10,000+ curriculum-aligned topics.',
-    url: 'https://fl4shcards.com',
+    url: 'https://www.fl4shcards.com',
     siteName: 'FL4SH Flashcards',
     images: [
       {

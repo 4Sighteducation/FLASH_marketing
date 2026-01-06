@@ -10,11 +10,12 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const host = req.headers.get('host') ?? '';
 
-  // Canonical host redirect: www -> non-www (keeps indexing consistent)
+  // Canonical host: Vercel is currently serving www as primary (apex redirects to www).
+  // Enforce apex -> www at the app layer too, to keep Search Console/indexing consistent.
   // Only apply on production hosts to avoid breaking preview deployments.
-  if (host === 'www.fl4shcards.com') {
+  if (host === 'fl4shcards.com') {
     const url = req.nextUrl.clone();
-    url.host = 'fl4shcards.com';
+    url.host = 'www.fl4shcards.com';
     url.protocol = 'https:';
     return NextResponse.redirect(url, 308);
   }

@@ -27,7 +27,7 @@ export function buildSeoMetadata(params: {
   description: string
   path: string
 }): Metadata {
-  const url = `https://fl4shcards.com${params.path.startsWith('/') ? params.path : `/${params.path}`}`
+  const url = `https://www.fl4shcards.com${params.path.startsWith('/') ? params.path : `/${params.path}`}`
   return {
     title: params.title,
     description: params.description,
