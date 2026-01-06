@@ -20,6 +20,24 @@ export default function UserManagement() {
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string>('');
 
+  const sendProCode = async (userId: string, email: string | null) => {
+    if (!email) {
+      alert('This user has no email on their auth account, so we cannot email them a code.');
+      return;
+    }
+    if (!confirm(`Send a FL4SH Pro code to ${email}?`)) return;
+
+    try {
+      const res = await adminFetch<{ ok: boolean; email: string; code: string; expires_at: string }>(`/api/admin/users/${userId}/send-pro-code`, {
+        method: 'POST',
+        body: JSON.stringify({ expires_at: expiresAt ? new Date(expiresAt).toISOString() : null }),
+      });
+      alert(`Sent!\n\nTo: ${res.email}\nCode: ${res.code}\nExpires: ${new Date(res.expires_at).toLocaleString()}`);
+    } catch (e: any) {
+      alert('Error: ' + (e?.message || 'Failed to send code'));
+    }
+  };
+
   const searchUsers = async () => {
     if (!searchEmail.trim()) {
       alert('Please enter an email to search');
@@ -197,6 +215,13 @@ export default function UserManagement() {
 
                   {/* Other Actions */}
                   <div className="flex gap-12" style={{ marginBottom: '16px' }}>
+                    <button
+                      onClick={() => sendProCode(user.id, user.email)}
+                      className="action-button"
+                      style={{ borderColor: 'rgba(0,245,255,0.35)' }}
+                    >
+                      ✉️ Send Pro code
+                    </button>
                     <button
                       onClick={() => blockUser(user.id, !user.banned_until, user.email)}
                       className="action-button"
