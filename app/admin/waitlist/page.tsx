@@ -17,8 +17,6 @@ export default function WaitlistPage() {
   const TOP_N = 50;
   const [newTesterEmail, setNewTesterEmail] = useState('');
   const [newTesterNote, setNewTesterNote] = useState('');
-  const [addEmail, setAddEmail] = useState('');
-  const [addNote, setAddNote] = useState('');
 
   const fetchRows = async (nextOffset = 0) => {
     setLoading(true);
@@ -69,26 +67,6 @@ export default function WaitlistPage() {
       await fetchRows(0);
     } catch (e: any) {
       alert(e?.message || `Failed to update top-${TOP_N} auto-Pro`);
-    }
-  };
-
-  const addTester = async () => {
-    const email = addEmail.trim().toLowerCase();
-    if (!email || !email.includes('@')) {
-      alert('Enter a valid email');
-      return;
-    }
-    try {
-      await adminFetch(`/api/admin/waitlist/add`, {
-        method: 'POST',
-        body: JSON.stringify({ email, days: Number(autoProDays) || 365, note: addNote.trim() }),
-      });
-      setAddEmail('');
-      setAddNote('');
-      await fetchRows(0);
-      alert('Tester added. They must create an account using the same email to auto-unlock Pro.');
-    } catch (e: any) {
-      alert(e?.message || 'Failed to add tester');
     }
   };
 
