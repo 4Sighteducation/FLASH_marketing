@@ -244,29 +244,53 @@ export default function Home() {
           </p>
           
           <div className={styles.subjectsGrid}>
-            <div className={styles.subjectCard}>
+            <a className={styles.subjectCard} href="/subjects/mathematics">
               <h3>📐 Mathematics</h3>
               <p>GCSE & A-Level Maths, Further Maths, Statistics</p>
-            </div>
-            <div className={styles.subjectCard}>
+            </a>
+            <a className={styles.subjectCard} href="/subjects/sciences">
               <h3>🧪 Sciences</h3>
               <p>Biology, Chemistry, Physics (Combined & Separate)</p>
-            </div>
-            <div className={styles.subjectCard}>
+            </a>
+            <a className={styles.subjectCard} href="/subjects/english">
               <h3>📚 English</h3>
               <p>Literature, Language, Creative Writing</p>
-            </div>
-            <div className={styles.subjectCard}>
+            </a>
+            <a className={styles.subjectCard} href="/subjects/humanities">
               <h3>🌍 Humanities</h3>
               <p>History, Geography, Psychology, Sociology</p>
-            </div>
-            <div className={styles.subjectCard}>
+            </a>
+            <a className={styles.subjectCard} href="/subjects/languages">
               <h3>🗣️ Languages</h3>
               <p>French, Spanish, German, and more</p>
-            </div>
-            <div className={styles.subjectCard}>
+            </a>
+            <a className={styles.subjectCard} href="/subjects/business-and-it">
               <h3>💼 Business & IT</h3>
               <p>Business Studies, Economics, Computer Science</p>
+            </a>
+            <a className={styles.subjectCard} href="/subjects/physical-education">
+              <h3>🏃 Physical Education</h3>
+              <p>GCSE & A-Level PE (specification-aligned revision)</p>
+            </a>
+          </div>
+
+          <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+            <p className={styles.sectionSubtitle} style={{ marginBottom: '1rem' }}>
+              Also supported: vocational, Scottish & international pathways
+            </p>
+            <div className={styles.subjectsGrid} style={{ marginTop: 0 }}>
+              <a className={styles.subjectCard} href="/vocational">
+                <h3>🧰 Vocational Awards</h3>
+                <p>Cambridge Nationals • BTEC Nationals</p>
+              </a>
+              <a className={styles.subjectCard} href="/scotland">
+                <h3>🏴 Scotland (SQA)</h3>
+                <p>Scottish Nationals • Scottish Highers</p>
+              </a>
+              <a className={styles.subjectCard} href="/international">
+                <h3>🌍 International</h3>
+                <p>International GCSE (iGCSE) • International A-Level</p>
+              </a>
             </div>
           </div>
         </div>

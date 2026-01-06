@@ -377,6 +377,9 @@
   border-radius: 1rem;
   padding: 2rem;
   transition: all 0.3s ease;
+  display: block;
+  text-decoration: none;
+  color: inherit;
 }
 
 .subjectCard:hover {
