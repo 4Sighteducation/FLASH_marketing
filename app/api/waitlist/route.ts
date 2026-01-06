@@ -59,10 +59,6 @@ export async function POST(request: NextRequest) {
           email: email.toLowerCase(),
           position,
           is_top_twenty: isTopTwenty,
-          // If the DB has the new columns, enable auto-pro for eligible signups (safe if column absent? will error).
-          // We only set these fields if they exist in the table; if your DB migration isn't applied yet, remove them.
-          auto_pro_enabled: isTopTwenty,
-          auto_pro_days: 365,
           source: resolvedSource,
           notified: false,
           created_at: new Date().toISOString()
