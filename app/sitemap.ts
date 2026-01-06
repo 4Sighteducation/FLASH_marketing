@@ -27,7 +27,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
     {
+      url: 'https://fl4shcards.com/subjects/history',
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.7,
+    },
+    {
       url: 'https://fl4shcards.com/subjects/humanities',
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.65,
+    },
+    {
+      url: 'https://fl4shcards.com/subjects/psychology',
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.65,

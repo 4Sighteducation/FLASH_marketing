@@ -256,9 +256,17 @@ export default function Home() {
               <h3>📚 English</h3>
               <p>Literature, Language, Creative Writing</p>
             </a>
+            <a className={styles.subjectCard} href="/subjects/history">
+              <h3>🏛️ History</h3>
+              <p>Timelines, themes, causes & consequences</p>
+            </a>
             <a className={styles.subjectCard} href="/subjects/humanities">
               <h3>🌍 Humanities</h3>
               <p>History, Geography, Psychology, Sociology</p>
+            </a>
+            <a className={styles.subjectCard} href="/subjects/psychology">
+              <h3>🧠 Psychology</h3>
+              <p>Key studies, evaluation, essay technique</p>
             </a>
             <a className={styles.subjectCard} href="/subjects/languages">
               <h3>🗣️ Languages</h3>
