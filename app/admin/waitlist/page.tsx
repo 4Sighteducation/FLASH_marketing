@@ -57,6 +57,21 @@ export default function WaitlistPage() {
     }
   };
 
+  const grantProNow = async (rowId: string) => {
+    if (!confirm('Grant Pro to this user NOW (requires they already created an account with the same email)?')) return;
+    try {
+      const res = await adminFetch<{ success: boolean; expiresAt?: string; error?: string }>(
+        `/api/admin/waitlist/${rowId}/grant-pro-now`,
+        { method: 'POST', body: JSON.stringify({}) }
+      );
+      if (!res?.success) throw new Error(res?.error || 'Grant failed');
+      await fetchRows(offset);
+      alert('Granted Pro (server-side). Ask the user to fully sign out and sign back in.');
+    } catch (e: any) {
+      alert(e?.message || 'Failed to grant Pro');
+    }
+  };
+
   const enableTopN = async (enabled: boolean) => {
     if (!confirm(`${enabled ? 'Enable' : 'Disable'} auto Pro for ALL top-${TOP_N} waitlist entries?`)) return;
     try {
@@ -149,27 +164,6 @@ export default function WaitlistPage() {
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-        <span style={{ color: '#94A3B8', fontSize: 14, fontWeight: 700 }}>Add tester (auto-Pro):</span>
-        <input
-          className="search-input"
-          style={{ minWidth: 260 }}
-          placeholder="email@example.com"
-          value={newTesterEmail}
-          onChange={(e) => setNewTesterEmail(e.target.value)}
-        />
-        <input
-          className="search-input"
-          style={{ minWidth: 220 }}
-          placeholder="note (optional)"
-          value={newTesterNote}
-          onChange={(e) => setNewTesterNote(e.target.value)}
-        />
-        <button className="action-button" onClick={addTester} disabled={loading}>
-          ➕ Add tester
-        </button>
-      </div>
-
       <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
         <button className="action-button" disabled={loading || !canPrev} onClick={() => fetchRows(Math.max(offset - limit, 0))}>
           ← Prev
@@ -214,6 +208,15 @@ export default function WaitlistPage() {
                         style={{ padding: '8px 10px' }}
                       >
                         {r.auto_pro_enabled ? 'Disable auto Pro' : 'Enable auto Pro'}
+                      </button>
+                      <button
+                        className="action-button"
+                        onClick={() => grantProNow(String(r.id))}
+                        style={{ padding: '8px 10px', opacity: r.auto_pro_granted_at ? 0.6 : 1 }}
+                        disabled={Boolean(r.auto_pro_granted_at)}
+                        title={r.auto_pro_granted_at ? 'Already granted' : 'Grant Pro now for an existing account'}
+                      >
+                        ⚡ Grant Pro now
                       </button>
                     </div>
                   ) : (
