@@ -155,15 +155,15 @@ export default function WaitlistPage() {
           className="search-input"
           style={{ minWidth: 260 }}
           placeholder="email@example.com"
-          value={addEmail}
-          onChange={(e) => setAddEmail(e.target.value)}
+          value={newTesterEmail}
+          onChange={(e) => setNewTesterEmail(e.target.value)}
         />
         <input
           className="search-input"
           style={{ minWidth: 220 }}
           placeholder="note (optional)"
-          value={addNote}
-          onChange={(e) => setAddNote(e.target.value)}
+          value={newTesterNote}
+          onChange={(e) => setNewTesterNote(e.target.value)}
         />
         <button className="action-button" onClick={addTester} disabled={loading}>
           ➕ Add tester
