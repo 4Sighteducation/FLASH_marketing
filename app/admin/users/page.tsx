@@ -50,6 +50,23 @@ export default function UserManagement() {
   const allOnPageSelected = users.length > 0 && users.every((u) => !!selectedById[u.id]);
   const someOnPageSelected = users.some((u) => !!selectedById[u.id]);
 
+  const toDateTimeLocalValue = (d: Date) => {
+    // YYYY-MM-DDTHH:mm for <input type="datetime-local" />
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const mm = pad(d.getMonth() + 1);
+    const dd = pad(d.getDate());
+    const hh = pad(d.getHours());
+    const mi = pad(d.getMinutes());
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+  };
+
+  const addDays = (d: Date, days: number) => {
+    const x = new Date(d);
+    x.setDate(x.getDate() + days);
+    return x;
+  };
+
   const sendProCode = async (userId: string, email: string | null) => {
     if (!email) {
       alert('This user has no email on their auth account, so we cannot email them a code.');
@@ -288,6 +305,33 @@ export default function UserManagement() {
     }
   };
 
+  const bulkSetProOneYear = async () => {
+    if (selectedCount === 0) return;
+    const expires = addDays(new Date(), 365);
+    const expiresIso = expires.toISOString();
+    if (!confirm(`Set tier = pro for ${selectedCount} selected users (expires in 1 year)?\n\nExpiry: ${expires.toLocaleString()}`)) return;
+    setBusyBulk('Setting Pro (1 year)…');
+    try {
+      // Populate the expiry input so it's visible/auditable in the UI
+      setExpiresAt(toDateTimeLocalValue(expires));
+      for (const id of selectedIds) {
+        const u = users.find((x) => x.id === id);
+        try {
+          await adminFetch(`/api/admin/users/${id}/tier`, {
+            method: 'POST',
+            body: JSON.stringify({ tier: 'pro', expires_at: expiresIso }),
+          });
+        } catch (e: any) {
+          console.warn('bulkSetProOneYear failed', { id, email: u?.email, error: e?.message || e });
+        }
+      }
+      await fetchUsers(offset);
+      alert(`Bulk Pro (1 year) finished.\n\nSelected: ${selectedCount}\nExpires: ${expires.toLocaleString()}\n\n(Any failures are logged in console.)`);
+    } finally {
+      setBusyBulk(null);
+    }
+  };
+
   const bulkHardDelete = async () => {
     if (selectedCount === 0) return;
     if (!confirm(`HARD DELETE ${selectedCount} users?\n\nThis cannot be undone.`)) return;
@@ -349,6 +393,9 @@ export default function UserManagement() {
             Selected: {selectedCount} {busyBulk ? `• ${busyBulk}` : ''}
           </div>
           <div className="admin-actions">
+            <button className="action-button" onClick={bulkSetProOneYear} disabled={!!busyBulk}>
+              ⭐ Pro (1 year)
+            </button>
             <select
               className="admin-select"
               value={bulkTier}
