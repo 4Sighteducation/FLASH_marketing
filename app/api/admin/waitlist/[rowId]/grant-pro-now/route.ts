@@ -53,8 +53,7 @@ export async function POST(request: NextRequest, ctx: { params: { rowId: string 
     const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 
     // Prefer DB helper function if present; otherwise write tables directly.
-    const rpc = await supabase
-      // @ts-expect-error: rpc is dynamic
+    const rpc = await (supabase as any)
       .rpc('grant_pro_to_user', {
         p_user_id: userId,
         p_expires_at: expiresAt,
