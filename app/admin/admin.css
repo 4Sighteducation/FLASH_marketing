@@ -294,6 +294,41 @@
   white-space: nowrap;
 }
 
+.admin-bulkbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin-top: 14px;
+  margin-bottom: 10px;
+  padding: 12px 12px;
+  border-radius: 14px;
+  background: rgba(10, 15, 30, 0.92);
+  border: 1px solid rgba(0, 245, 255, 0.18);
+  backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-topscroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 14px;
+  margin: 0 0 10px 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-tablewrap {
+  overflow: auto;
+  max-height: calc(100vh - 280px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
 /* Utilities */
 .flex {
   display: flex;
