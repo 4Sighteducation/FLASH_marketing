@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { adminFetch } from '../../../lib/adminClient';
 
 type AdminUserRow = {
@@ -9,16 +9,31 @@ type AdminUserRow = {
   created_at: string | null;
   last_sign_in_at: string | null;
   banned_until: string | null;
-  subscription: { tier: string | null; expires_at: string | null };
+  name?: string | null;
+  subscription: { tier: string | null; expires_at: string | null; source?: string | null };
+  device?: {
+    last_seen_at: string | null;
+    platform: string | null;
+    app_version: string | null;
+    build_version: string | null;
+    device_model: string | null;
+    os_name: string | null;
+    os_version: string | null;
+    country: string | null;
+  } | null;
+  activation?: { subjects_count: number; cards_count: number };
+  monetization?: { redemptions_count: number; parent_purchases_count: number };
 };
-type UsersResponse = { rows: AdminUserRow[] };
+type UsersResponse = { rows: AdminUserRow[]; limit: number; offset: number; hasMore: boolean };
 
 export default function UserManagement() {
-  const [searchEmail, setSearchEmail] = useState('');
+  const [q, setQ] = useState('');
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string>('');
+  const [pageSize, setPageSize] = useState<'100' | '15'>('100');
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
 
   const sendProCode = async (userId: string, email: string | null) => {
     if (!email) {
@@ -38,21 +53,16 @@ export default function UserManagement() {
     }
   };
 
-  const searchUsers = async () => {
-    if (!searchEmail.trim()) {
-      alert('Please enter an email to search');
-      return;
-    }
-
+  const fetchUsers = async (nextOffset = 0) => {
     setLoading(true);
     try {
-      const res = await adminFetch<UsersResponse>(`/api/admin/users?q=${encodeURIComponent(searchEmail)}&limit=25`, {
-        method: 'GET',
-      });
+      const res = await adminFetch<UsersResponse>(
+        `/api/admin/users?q=${encodeURIComponent(q)}&limit=${encodeURIComponent(pageSize)}&offset=${encodeURIComponent(String(nextOffset))}`,
+        { method: 'GET' }
+      );
       setUsers(res.rows || []);
-      if (!res.rows || res.rows.length === 0) {
-        alert('No users found');
-      }
+      setOffset(res.offset || 0);
+      setHasMore(!!res.hasMore);
     } catch (error: any) {
       console.error('Error searching users:', error);
       alert('Error: ' + error.message);
@@ -60,6 +70,12 @@ export default function UserManagement() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Initial load: show users immediately (no search required)
+    fetchUsers(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const changeTier = async (userId: string, newTier: string, email: string | null) => {
     if (!confirm(`Change ${email || userId} to ${newTier}?`)) return;
@@ -70,7 +86,7 @@ export default function UserManagement() {
         body: JSON.stringify({ tier: newTier, expires_at: expiresAt ? new Date(expiresAt).toISOString() : null }),
       });
       alert('Tier updated!');
-      await searchUsers();
+      await fetchUsers(offset);
     } catch (error: any) {
       alert('Error: ' + error.message);
     }
@@ -84,7 +100,7 @@ export default function UserManagement() {
         body: JSON.stringify({ blocked }),
       });
       alert(blocked ? 'User blocked.' : 'User unblocked.');
-      await searchUsers();
+      await fetchUsers(offset);
     } catch (e: any) {
       alert('Error: ' + (e.message || 'Failed'));
     }
@@ -119,25 +135,48 @@ export default function UserManagement() {
 
   return (
     <div>
-      <h2 className="section-title">👥 User Management</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <h2 className="section-title">👥 Users</h2>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ color: '#94A3B8', fontSize: 13, fontWeight: 800 }}>Page size</span>
+          <select
+            className="search-input"
+            style={{ width: 120 }}
+            value={pageSize}
+            onChange={(e) => setPageSize((e.target.value as any) || '100')}
+          >
+            <option value="100">100</option>
+            <option value="15">15</option>
+          </select>
+          <button onClick={() => fetchUsers(0)} disabled={loading} className="action-button">
+            {loading ? '...' : '🔄 Refresh'}
+          </button>
+        </div>
+      </div>
 
-      {/* Search */}
-      <div className="search-container">
+      <div className="search-container" style={{ marginTop: 12 }}>
         <input
-          type="email"
           className="search-input"
-          placeholder="Search by email..."
-          value={searchEmail}
-          onChange={(e) => setSearchEmail(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && searchUsers()}
+          placeholder="Search by email or name..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && fetchUsers(0)}
         />
-        <button 
-          onClick={searchUsers} 
-          disabled={loading}
-          className="search-button"
-        >
+        <button onClick={() => fetchUsers(0)} disabled={loading} className="search-button">
           {loading ? '...' : '🔍 Search'}
         </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 12, margin: '12px 0 18px 0' }}>
+        <button className="action-button" disabled={loading || offset <= 0} onClick={() => fetchUsers(Math.max(offset - Number(pageSize), 0))}>
+          ← Prev
+        </button>
+        <button className="action-button" disabled={loading || !hasMore} onClick={() => fetchUsers(offset + Number(pageSize))}>
+          Next →
+        </button>
+        <div style={{ color: '#94A3B8', fontSize: 13, fontWeight: 700, alignSelf: 'center' }}>
+          showing {users.length} • offset {offset}
+        </div>
       </div>
 
       <div style={{ marginBottom: 20, color: '#94A3B8', fontSize: 14 }}>
@@ -158,119 +197,81 @@ export default function UserManagement() {
         />
       </div>
 
-      {/* Results */}
-      {users.length > 0 && (
-        <div>
-          <p style={{ color: '#94A3B8', marginBottom: '20px', fontSize: '14px' }}>
-            {users.length} user{users.length !== 1 ? 's' : ''} found
-          </p>
-
-          {users.map((user) => (
-            <div key={user.id} className="user-card">
-              <div 
-                className="user-header"
-                onClick={() => setExpandedUser(
-                  expandedUser === user.id ? null : user.id
-                )}
-              >
-                <div>
-                  <div className="user-email">{user.email || '(no email)'}</div>
-                  <div style={{ marginTop: '8px' }}>
-                    <span className="tier-badge tier-pro" style={{ opacity: 0.8 }}>
-                      {user.subscription?.tier || '—'}
-                    </span>
-                    <span style={{ color: '#64748B', fontSize: '12px' }}>
-                      Joined {user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}
-                    </span>
-                  </div>
-                </div>
-                <span style={{ color: '#94A3B8' }}>
-                  {expandedUser === user.id ? '▲' : '▼'}
-                </span>
-              </div>
-
-              {expandedUser === user.id && (
-                <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                  {/* Tier Buttons */}
-                  <div style={{ marginBottom: '16px' }}>
-                    <p style={{ color: '#94A3B8', fontSize: '14px', marginBottom: '12px' }}>
-                      Change Tier:
-                    </p>
-                    <div className="flex gap-12">
-                      {['free', 'premium', 'pro'].map((tier) => (
-                        <button
-                          key={tier}
-                          onClick={() => changeTier(user.id, tier, user.email)}
-                          className="action-button"
-                          style={{
-                            opacity: (user.subscription?.tier || '').toLowerCase() === tier ? 1 : 0.5,
-                            borderColor: (user.subscription?.tier || '').toLowerCase() === tier ? '#00F5FF' : 'rgba(255,255,255,0.1)',
-                          }}
-                        >
-                          {tier.charAt(0).toUpperCase() + tier.slice(1)}
-                        </button>
-                      ))}
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', color: '#E2E8F0' }}>
+          <thead>
+            <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <th style={{ padding: 12 }}>Email</th>
+              <th style={{ padding: 12 }}>Name</th>
+              <th style={{ padding: 12 }}>Tier</th>
+              <th style={{ padding: 12 }}>Subjects</th>
+              <th style={{ padding: 12 }}>Cards</th>
+              <th style={{ padding: 12 }}>Last active</th>
+              <th style={{ padding: 12 }}>Device</th>
+              <th style={{ padding: 12 }}>Country</th>
+              <th style={{ padding: 12 }}>Redeems</th>
+              <th style={{ padding: 12 }}>Parent buys</th>
+              <th style={{ padding: 12 }}>Joined</th>
+              <th style={{ padding: 12 }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u) => {
+              const tier = (u.subscription?.tier || 'free').toLowerCase();
+              const src = u.subscription?.source ? ` (${u.subscription.source})` : '';
+              const lastActive = u.device?.last_seen_at || u.last_sign_in_at || null;
+              const deviceLabel = u.device?.device_model || u.device?.platform || '—';
+              return (
+                <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <td style={{ padding: 12 }}>{u.email || '(no email)'}</td>
+                  <td style={{ padding: 12 }}>{u.name || '—'}</td>
+                  <td style={{ padding: 12 }}>
+                    <span className={`tier-badge tier-${tier}`}>{tier}</span>
+                    <span style={{ color: '#64748B', fontSize: 11 }}>{src}</span>
+                  </td>
+                  <td style={{ padding: 12 }}>{u.activation?.subjects_count ?? 0}</td>
+                  <td style={{ padding: 12 }}>{u.activation?.cards_count ?? 0}</td>
+                  <td style={{ padding: 12 }}>{lastActive ? new Date(lastActive).toLocaleString() : '—'}</td>
+                  <td style={{ padding: 12 }}>{deviceLabel}</td>
+                  <td style={{ padding: 12 }}>{u.device?.country || '—'}</td>
+                  <td style={{ padding: 12 }}>{u.monetization?.redemptions_count ?? 0}</td>
+                  <td style={{ padding: 12 }}>{u.monetization?.parent_purchases_count ?? 0}</td>
+                  <td style={{ padding: 12 }}>{u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</td>
+                  <td style={{ padding: 12 }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button className="action-button" onClick={() => changeTier(u.id, 'free', u.email)} style={{ padding: '8px 10px', opacity: tier === 'free' ? 1 : 0.7 }}>
+                        Free
+                      </button>
+                      <button className="action-button" onClick={() => changeTier(u.id, 'premium', u.email)} style={{ padding: '8px 10px', opacity: tier === 'premium' ? 1 : 0.7 }}>
+                        Premium
+                      </button>
+                      <button className="action-button" onClick={() => changeTier(u.id, 'pro', u.email)} style={{ padding: '8px 10px', opacity: tier === 'pro' ? 1 : 0.7 }}>
+                        Pro
+                      </button>
+                      <button className="action-button" onClick={() => sendProCode(u.id, u.email)} style={{ padding: '8px 10px' }}>
+                        ✉️ Code
+                      </button>
+                      <button className="action-button" onClick={() => blockUser(u.id, !u.banned_until, u.email)} style={{ padding: '8px 10px', opacity: u.banned_until ? 0.9 : 0.7 }}>
+                        {u.banned_until ? '✅' : '⛔'}
+                      </button>
+                      <button className="danger-button" onClick={() => hardDeleteUser(u.id, u.email)} style={{ padding: '8px 10px' }}>
+                        🗑️
+                      </button>
                     </div>
-                  </div>
-
-                  {/* Other Actions */}
-                  <div className="flex gap-12" style={{ marginBottom: '16px' }}>
-                    <button
-                      onClick={() => sendProCode(user.id, user.email)}
-                      className="action-button"
-                      style={{ borderColor: 'rgba(0,245,255,0.35)' }}
-                    >
-                      ✉️ Send Pro code
-                    </button>
-                    <button
-                      onClick={() => blockUser(user.id, !user.banned_until, user.email)}
-                      className="action-button"
-                    >
-                      {user.banned_until ? '✅ Unblock' : '⛔ Block'}
-                    </button>
-                    <button
-                      onClick={() => hardDeleteUser(user.id, user.email)}
-                      className="danger-button"
-                    >
-                      🗑️ Hard Delete
-                    </button>
-                  </div>
-
-                  {/* User Stats */}
-                  <div style={{ 
-                    background: 'rgba(255,255,255,0.02)', 
-                    borderRadius: '8px', 
-                    padding: '12px',
-                    fontSize: '13px',
-                    color: '#94A3B8',
-                  }}>
-                    <div>🆔 {user.id}</div>
-                    <div>📅 Last sign-in: {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'Never'}</div>
-                    <div>⛔ Banned until: {user.banned_until ? new Date(user.banned_until).toLocaleString() : '—'}</div>
-                    <div>
-                      💎 Tier expiry: {user.subscription?.expires_at ? new Date(user.subscription.expires_at).toLocaleString() : '—'}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {users.length === 0 && !loading && (
-        <div style={{ 
-          textAlign: 'center', 
-          color: '#64748B', 
-          padding: '60px 20px',
-          background: 'rgba(255,255,255,0.02)',
-          borderRadius: '16px',
-          border: '1px dashed rgba(255,255,255,0.1)',
-        }}>
-          <p style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</p>
-          <p>Search for users by email to get started</p>
-        </div>
-      )}
+                  </td>
+                </tr>
+              );
+            })}
+            {users.length === 0 ? (
+              <tr>
+                <td style={{ padding: 12, color: '#94A3B8' }} colSpan={12}>
+                  {loading ? 'Loading…' : 'No users.'}
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
