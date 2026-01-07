@@ -57,6 +57,7 @@ export default function CodesPage() {
   const [edit, setEdit] = useState<Record<string, { assigned_to: string; assigned_note: string }>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [assignOpenId, setAssignOpenId] = useState<string | null>(null);
 
   const expiresAtIso = useMemo(() => {
     const days = Math.max(1, Math.min(3650, Number(expiresDays) || 30));
@@ -159,6 +160,17 @@ export default function CodesPage() {
     } finally {
       setSavingId(null);
     }
+  };
+
+  const openAssign = (row: CodeRow) => {
+    setEdit((m) => ({
+      ...m,
+      [row.id]: {
+        assigned_to: String((row as any).assigned_to || ''),
+        assigned_note: String((row as any).assigned_note || ''),
+      },
+    }));
+    setAssignOpenId(row.id);
   };
 
   const cancelCode = async (row: CodeRow) => {
@@ -264,23 +276,119 @@ export default function CodesPage() {
         {rowsCount} total • showing {rows.length}
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', color: '#E2E8F0' }}>
+      {assignOpenId ? (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.55)',
+            zIndex: 50,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+          onMouseDown={(e) => {
+            // click outside closes
+            if (e.target === e.currentTarget) setAssignOpenId(null);
+          }}
+        >
+          {(() => {
+            const row = rows.find((x) => x.id === assignOpenId) || null;
+            if (!row) return null;
+            const v = edit[row.id] || { assigned_to: '', assigned_note: '' };
+            const isBusy = rowsLoading || savingId === row.id || deletingId === row.id;
+            const red = (row.access_code_redemptions || [])[0] || null;
+            const isRedeemed = !!red?.redeemed_at || (row.uses_count || 0) > 0;
+            const isCancelled = !!row.cancelled_at;
+            return (
+              <div className="admin-card" style={{ width: 'min(720px, 100%)', padding: 18 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                  <div>
+                    <div style={{ color: '#E2E8F0', fontWeight: 900, fontSize: 18 }}>Assign code</div>
+                    <div style={{ color: '#94A3B8', marginTop: 4, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
+                      {row.code_pretty}
+                    </div>
+                  </div>
+                  <button className="action-button" style={{ padding: '8px 10px' }} onClick={() => setAssignOpenId(null)}>
+                    ✕ Close
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
+                  <label style={{ color: '#94A3B8', fontSize: 13, fontWeight: 800 }}>Name / who you sent it to</label>
+                  <input
+                    className="search-input"
+                    value={v.assigned_to}
+                    onChange={(e) => setEdit((m) => ({ ...m, [row.id]: { ...(m[row.id] || v), assigned_to: e.target.value } }))}
+                    placeholder="e.g. Dave (tennis) / Sarah’s son"
+                    disabled={isBusy || isRedeemed || isCancelled}
+                    style={{ padding: 12 }}
+                    autoFocus
+                  />
+
+                  <label style={{ color: '#94A3B8', fontSize: 13, fontWeight: 800 }}>Notes (optional)</label>
+                  <textarea
+                    value={v.assigned_note}
+                    onChange={(e) => setEdit((m) => ({ ...m, [row.id]: { ...(m[row.id] || v), assigned_note: e.target.value } }))}
+                    placeholder="Anything helpful: where you met, reminder to follow up, etc."
+                    disabled={isBusy || isRedeemed || isCancelled}
+                    style={{
+                      width: '100%',
+                      minHeight: 90,
+                      borderRadius: 12,
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      background: 'rgba(0,0,0,0.25)',
+                      color: '#E2E8F0',
+                      padding: 12,
+                      resize: 'vertical',
+                    }}
+                  />
+                </div>
+
+                <div className="admin-actions" style={{ justifyContent: 'space-between', marginTop: 16 }}>
+                  <div className="admin-actions">
+                    <button
+                      className="action-button"
+                      onClick={async () => {
+                        await saveAssignment(row);
+                        setAssignOpenId(null);
+                      }}
+                      disabled={isBusy || isRedeemed || isCancelled}
+                    >
+                      💾 Save
+                    </button>
+                    <button className="action-button" onClick={() => cancelCode(row)} disabled={isBusy || isRedeemed || isCancelled}>
+                      🚫 Cancel code
+                    </button>
+                    <button className="danger-button" onClick={() => deleteCode(row)} disabled={isBusy || isRedeemed}>
+                      🗑️ Delete
+                    </button>
+                  </div>
+
+                  <div style={{ color: '#94A3B8', fontSize: 12 }}>
+                    {row.assigned_at ? `Assigned at: ${new Date(row.assigned_at).toLocaleString()}` : 'Not yet assigned'}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      ) : null}
+
+      <div className="admin-tablewrap">
+        <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', color: '#E2E8F0' }}>
           <thead>
             <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-              <th style={{ padding: 12 }}>Code</th>
-              <th style={{ padding: 12 }}>Tier</th>
-              <th style={{ padding: 12 }}>Uses</th>
-              <th style={{ padding: 12 }}>Expires</th>
-              <th style={{ padding: 12 }}>Note</th>
-              <th style={{ padding: 12 }}>Assigned</th>
-              <th style={{ padding: 12 }}>Assigned note</th>
-              <th style={{ padding: 12 }}>Assigned at</th>
-              <th style={{ padding: 12 }}>Status</th>
-              <th style={{ padding: 12 }}>Redeemed by</th>
-              <th style={{ padding: 12 }}>Redeemed at</th>
-              <th style={{ padding: 12 }}>Created</th>
-              <th style={{ padding: 12 }}>Actions</th>
+              <th style={{ padding: 8, position: 'sticky', top: 0, background: 'rgba(10, 15, 30, 0.98)', zIndex: 3 }}>Code</th>
+              <th style={{ padding: 8, position: 'sticky', top: 0, background: 'rgba(10, 15, 30, 0.98)', zIndex: 3 }}>Tier</th>
+              <th style={{ padding: 8, position: 'sticky', top: 0, background: 'rgba(10, 15, 30, 0.98)', zIndex: 3 }}>Uses</th>
+              <th style={{ padding: 8, position: 'sticky', top: 0, background: 'rgba(10, 15, 30, 0.98)', zIndex: 3 }}>Expires</th>
+              <th style={{ padding: 8, position: 'sticky', top: 0, background: 'rgba(10, 15, 30, 0.98)', zIndex: 3 }}>Batch note</th>
+              <th style={{ padding: 8, position: 'sticky', top: 0, background: 'rgba(10, 15, 30, 0.98)', zIndex: 3 }}>Assigned to</th>
+              <th style={{ padding: 8, position: 'sticky', top: 0, background: 'rgba(10, 15, 30, 0.98)', zIndex: 3 }}>Status</th>
+              <th style={{ padding: 8, position: 'sticky', top: 0, background: 'rgba(10, 15, 30, 0.98)', zIndex: 3 }}>Redeemed by</th>
+              <th style={{ padding: 8, position: 'sticky', top: 0, background: 'rgba(10, 15, 30, 0.98)', zIndex: 3 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -290,61 +398,40 @@ export default function CodesPage() {
               const isCancelled = !!r.cancelled_at;
               const isAssigned = !!(r.assigned_to && String(r.assigned_to).trim());
               const status = isCancelled ? 'cancelled' : isRedeemed ? 'redeemed' : isAssigned ? 'assigned' : 'unassigned';
-              const v = edit[r.id] || { assigned_to: String(r.assigned_to || ''), assigned_note: String(r.assigned_note || '') };
-              const changed =
-                v.assigned_to.trim() !== String(r.assigned_to || '').trim() || v.assigned_note.trim() !== String(r.assigned_note || '').trim();
               return (
                 <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <td style={{ padding: 12, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
+                  <td style={{ padding: 8, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace', whiteSpace: 'nowrap' }}>
                     {r.code_pretty}
                   </td>
-                  <td style={{ padding: 12 }}>{r.tier}</td>
-                  <td style={{ padding: 12 }}>
+                  <td style={{ padding: 8 }}>{r.tier}</td>
+                  <td style={{ padding: 8 }}>
                     {r.uses_count}/{r.max_uses}
                   </td>
-                  <td style={{ padding: 12 }}>{r.expires_at ? new Date(r.expires_at).toLocaleString() : '—'}</td>
-                  <td style={{ padding: 12 }}>{r.note || '—'}</td>
-                  <td style={{ padding: 12 }}>
-                    <input
-                      className="search-input"
-                      style={{ minWidth: 180, padding: 10, fontSize: 14 }}
-                      placeholder="Name / who you sent it to"
-                      value={v.assigned_to}
-                      onChange={(e) => setEdit((m) => ({ ...m, [r.id]: { ...(m[r.id] || v), assigned_to: e.target.value } }))}
-                      disabled={rowsLoading || savingId === r.id || deletingId === r.id || isRedeemed || isCancelled}
-                    />
+                  <td style={{ padding: 8, whiteSpace: 'nowrap' }}>{r.expires_at ? new Date(r.expires_at).toLocaleDateString() : '—'}</td>
+                  <td style={{ padding: 8, color: '#94A3B8', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.note || ''}>
+                    {r.note || '—'}
                   </td>
-                  <td style={{ padding: 12 }}>
-                    <input
-                      className="search-input"
-                      style={{ minWidth: 260, padding: 10, fontSize: 14 }}
-                      placeholder="Notes (optional)"
-                      value={v.assigned_note}
-                      onChange={(e) => setEdit((m) => ({ ...m, [r.id]: { ...(m[r.id] || v), assigned_note: e.target.value } }))}
-                      disabled={rowsLoading || savingId === r.id || deletingId === r.id || isRedeemed || isCancelled}
-                    />
+                  <td style={{ padding: 8, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.assigned_to || ''}>
+                    {r.assigned_to || '—'}
                   </td>
-                  <td style={{ padding: 12 }}>
-                    {r.assigned_at ? new Date(r.assigned_at).toLocaleString() : '—'}
-                  </td>
-                  <td style={{ padding: 12 }}>
+                  <td style={{ padding: 8 }}>
                     <span className={`tier-badge tier-${status === 'redeemed' ? 'pro' : status === 'cancelled' ? 'ultimate' : status === 'assigned' ? 'pro' : 'starter'}`}>
                       {status}
                     </span>
                   </td>
-                  <td style={{ padding: 12 }}>{red?.user_email || '—'}</td>
-                  <td style={{ padding: 12 }}>{red?.redeemed_at ? new Date(red.redeemed_at).toLocaleString() : '—'}</td>
-                  <td style={{ padding: 12 }}>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
-                  <td style={{ padding: 12 }}>
+                  <td style={{ padding: 8, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={red?.user_email || ''}>
+                    {red?.user_email || '—'}
+                  </td>
+                  <td style={{ padding: 8 }}>
                     <div className="admin-actions">
                       <button
                         className="action-button"
                         style={{ padding: '8px 10px' }}
-                        disabled={!changed || rowsLoading || savingId === r.id || deletingId === r.id || isRedeemed || isCancelled}
-                        onClick={() => saveAssignment(r)}
-                        title="Save assignment fields"
+                        disabled={rowsLoading || savingId === r.id || deletingId === r.id}
+                        onClick={() => openAssign(r)}
+                        title="Assign / view notes"
                       >
-                        💾 Save
+                        ✍️ Assign…
                       </button>
                       <button
                         className="action-button"
@@ -377,7 +464,7 @@ export default function CodesPage() {
             })}
             {rows.length === 0 ? (
               <tr>
-                <td style={{ padding: 12, color: '#94A3B8' }} colSpan={12}>
+                <td style={{ padding: 12, color: '#94A3B8' }} colSpan={9}>
                   {rowsLoading ? 'Loading…' : 'No codes yet.'}
                 </td>
               </tr>
