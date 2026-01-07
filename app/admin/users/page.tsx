@@ -22,6 +22,7 @@ type AdminUserRow = {
     country: string | null;
   } | null;
   activation?: { subjects_count: number; cards_count: number };
+  engagement?: { reviews_7d: number; streak_days: number; last_study_date: string | null };
   monetization?: { redemptions_count: number; parent_purchases_count: number };
 };
 type UsersResponse = { rows: AdminUserRow[]; limit: number; offset: number; hasMore: boolean };
@@ -34,6 +35,7 @@ export default function UserManagement() {
   const [pageSize, setPageSize] = useState<'100' | '15'>('100');
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const [pendingTierByUserId, setPendingTierByUserId] = useState<Record<string, string>>({});
 
   const sendProCode = async (userId: string, email: string | null) => {
     if (!email) {
@@ -197,7 +199,7 @@ export default function UserManagement() {
       </div>
 
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', color: '#E2E8F0' }}>
+        <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', color: '#E2E8F0' }}>
           <thead>
             <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <th style={{ padding: 12 }}>Email</th>
@@ -206,12 +208,14 @@ export default function UserManagement() {
               <th style={{ padding: 12 }}>Subjects</th>
               <th style={{ padding: 12 }}>Cards</th>
               <th style={{ padding: 12 }}>Last active</th>
+              <th style={{ padding: 12 }}>Reviews 7d</th>
+              <th style={{ padding: 12 }}>Streak</th>
               <th style={{ padding: 12 }}>Device</th>
               <th style={{ padding: 12 }}>Country</th>
               <th style={{ padding: 12 }}>Redeems</th>
               <th style={{ padding: 12 }}>Parent buys</th>
               <th style={{ padding: 12 }}>Joined</th>
-              <th style={{ padding: 12 }}>Actions</th>
+              <th style={{ padding: 12, minWidth: 320 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -220,6 +224,7 @@ export default function UserManagement() {
               const src = u.subscription?.source ? ` (${u.subscription.source})` : '';
               const lastActive = u.device?.last_seen_at || u.last_sign_in_at || null;
               const deviceLabel = u.device?.device_model || u.device?.platform || '—';
+              const selectedTier = (pendingTierByUserId[u.id] ?? tier) as string;
               return (
                 <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <td style={{ padding: 12 }}>{u.email || '(no email)'}</td>
@@ -231,29 +236,52 @@ export default function UserManagement() {
                   <td style={{ padding: 12 }}>{u.activation?.subjects_count ?? 0}</td>
                   <td style={{ padding: 12 }}>{u.activation?.cards_count ?? 0}</td>
                   <td style={{ padding: 12 }}>{lastActive ? new Date(lastActive).toLocaleString() : '—'}</td>
+                  <td style={{ padding: 12 }}>{u.engagement?.reviews_7d ?? 0}</td>
+                  <td style={{ padding: 12 }}>{u.engagement?.streak_days ?? 0}</td>
                   <td style={{ padding: 12 }}>{deviceLabel}</td>
                   <td style={{ padding: 12 }}>{u.device?.country || '—'}</td>
                   <td style={{ padding: 12 }}>{u.monetization?.redemptions_count ?? 0}</td>
                   <td style={{ padding: 12 }}>{u.monetization?.parent_purchases_count ?? 0}</td>
                   <td style={{ padding: 12 }}>{u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</td>
                   <td style={{ padding: 12 }}>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button className="action-button" onClick={() => changeTier(u.id, 'free', u.email)} style={{ padding: '8px 10px', opacity: tier === 'free' ? 1 : 0.7 }}>
-                        Free
+                    <div className="admin-actions">
+                      <a className="action-button" href={`/admin/users/${u.id}`} style={{ padding: '7px 10px', fontSize: 12 }}>
+                        View
+                      </a>
+
+                      <select
+                        className="admin-select"
+                        value={selectedTier}
+                        onChange={(e) => setPendingTierByUserId((m) => ({ ...m, [u.id]: e.target.value }))}
+                        style={{ padding: '8px 10px', fontSize: 12 }}
+                      >
+                        <option value="free">free</option>
+                        <option value="premium">premium</option>
+                        <option value="pro">pro</option>
+                      </select>
+
+                      <button
+                        className="action-button"
+                        onClick={() => changeTier(u.id, selectedTier, u.email)}
+                        style={{ padding: '7px 10px', fontSize: 12, opacity: selectedTier === tier ? 0.6 : 1 }}
+                        disabled={selectedTier === tier}
+                        title="Apply tier"
+                      >
+                        Apply
                       </button>
-                      <button className="action-button" onClick={() => changeTier(u.id, 'premium', u.email)} style={{ padding: '8px 10px', opacity: tier === 'premium' ? 1 : 0.7 }}>
-                        Premium
+
+                      <button className="action-button" onClick={() => sendProCode(u.id, u.email)} style={{ padding: '7px 10px', fontSize: 12 }} title="Send code">
+                        ✉️
                       </button>
-                      <button className="action-button" onClick={() => changeTier(u.id, 'pro', u.email)} style={{ padding: '8px 10px', opacity: tier === 'pro' ? 1 : 0.7 }}>
-                        Pro
-                      </button>
-                      <button className="action-button" onClick={() => sendProCode(u.id, u.email)} style={{ padding: '8px 10px' }}>
-                        ✉️ Code
-                      </button>
-                      <button className="action-button" onClick={() => blockUser(u.id, !u.banned_until, u.email)} style={{ padding: '8px 10px', opacity: u.banned_until ? 0.9 : 0.7 }}>
+                      <button
+                        className="action-button"
+                        onClick={() => blockUser(u.id, !u.banned_until, u.email)}
+                        style={{ padding: '7px 10px', fontSize: 12, opacity: u.banned_until ? 0.9 : 0.7 }}
+                        title={u.banned_until ? 'Unblock user' : 'Block user'}
+                      >
                         {u.banned_until ? '✅' : '⛔'}
                       </button>
-                      <button className="danger-button" onClick={() => hardDeleteUser(u.id, u.email)} style={{ padding: '8px 10px' }}>
+                      <button className="danger-button" onClick={() => hardDeleteUser(u.id, u.email)} style={{ padding: '7px 10px', fontSize: 12 }} title="Hard delete">
                         🗑️
                       </button>
                     </div>

@@ -17,6 +17,7 @@ type LastSeenRow = {
   timezone: string | null;
   country: string | null;
 };
+type DailyStudyRow = { user_id: string; study_date: string; reviews_total: number };
 
 function norm(s: any): string {
   return String(s || '').trim().toLowerCase();
@@ -30,6 +31,16 @@ function countByUserId(rows: Array<any>, key: string): Map<string, number> {
     m.set(id, (m.get(id) || 0) + 1);
   }
   return m;
+}
+
+function ymd(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function addDays(d: Date, deltaDays: number): Date {
+  const x = new Date(d);
+  x.setDate(x.getDate() + deltaDays);
+  return x;
 }
 
 export async function GET(request: NextRequest) {
@@ -96,6 +107,9 @@ export async function GET(request: NextRequest) {
     let cardsCountByUserId = new Map<string, number>();
     let redemptionsCountByUserId = new Map<string, number>();
     let parentPurchasesByUserId = new Map<string, number>();
+    let reviews7dByUserId = new Map<string, number>();
+    let streakDaysByUserId = new Map<string, number>();
+    let lastStudyDateByUserId = new Map<string, string>();
     if (ids.length > 0) {
       const { data: subs, error: subsErr } = await supabase
         .from('user_subscriptions')
@@ -134,6 +148,43 @@ export async function GET(request: NextRequest) {
 
       const { data: parentRows } = await supabase.from('parent_claims').select('claimed_by').in('claimed_by', ids);
       if (parentRows) parentPurchasesByUserId = countByUserId(parentRows as any[], 'claimed_by');
+
+      // Engagement: reviews in last 7 days + streak + last study date (from MV)
+      const today = new Date();
+      const since = ymd(addDays(today, -6));
+      const { data: dailyRows } = await supabase
+        .from('user_daily_study_stats_mv')
+        .select('user_id,study_date,reviews_total')
+        .in('user_id', ids)
+        .gte('study_date', since)
+        .limit(10000);
+
+      // Build per-user date sets + totals
+      const datesByUser = new Map<string, Set<string>>();
+      for (const r of (dailyRows || []) as unknown as DailyStudyRow[]) {
+        const uid = String((r as any).user_id || '');
+        const sd = String((r as any).study_date || '');
+        const reviews = Number((r as any).reviews_total || 0);
+        if (!uid || !sd) continue;
+        reviews7dByUserId.set(uid, (reviews7dByUserId.get(uid) || 0) + reviews);
+        const set = datesByUser.get(uid) || new Set<string>();
+        set.add(sd);
+        datesByUser.set(uid, set);
+        const prev = lastStudyDateByUserId.get(uid);
+        if (!prev || sd > prev) lastStudyDateByUserId.set(uid, sd);
+      }
+
+      // Streak from today backwards (max 7 days)
+      for (const uid of ids) {
+        const set = datesByUser.get(uid) || new Set<string>();
+        let streak = 0;
+        for (let i = 0; i < 7; i++) {
+          const date = ymd(addDays(today, -i));
+          if (set.has(date)) streak++;
+          else break;
+        }
+        streakDaysByUserId.set(uid, streak);
+      }
     }
 
     const rows = sliced.map((u: any) => {
@@ -176,6 +227,11 @@ export async function GET(request: NextRequest) {
         monetization: {
           redemptions_count: redemptionsCountByUserId.get(u.id) ?? 0,
           parent_purchases_count: parentPurchasesByUserId.get(u.id) ?? 0,
+        },
+        engagement: {
+          reviews_7d: reviews7dByUserId.get(u.id) ?? 0,
+          streak_days: streakDaysByUserId.get(u.id) ?? 0,
+          last_study_date: lastStudyDateByUserId.get(u.id) ?? null,
         },
       };
     });

@@ -281,6 +281,19 @@
   background: rgba(255, 0, 110, 0.2);
 }
 
+/* Tables */
+.admin-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.admin-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  align-items: center;
+  white-space: nowrap;
+}
+
 /* Utilities */
 .flex {
   display: flex;
