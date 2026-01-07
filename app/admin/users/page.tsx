@@ -127,7 +127,6 @@ export default function UserManagement() {
         alert('User deleted successfully.');
       }
       setUsers(users.filter((u) => u.id !== userId));
-      setExpandedUser(null);
     } catch (error: any) {
       alert('Error: ' + error.message);
     }
