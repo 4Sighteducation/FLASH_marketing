@@ -9,8 +9,8 @@ async function findUserIdByEmail(supabase: ReturnType<typeof getServiceClient>, 
   const needle = email.trim().toLowerCase();
 
   while (page <= maxPages) {
-    // @ts-expect-error - typings vary by supabase-js version, but this exists at runtime.
-    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    // Typings vary by supabase-js version; listUsers exists at runtime on auth.admin.
+    const { data, error } = await (supabase as any).auth.admin.listUsers({ page, perPage });
     if (error) throw new Error(error.message);
     const users: any[] = data?.users || [];
     const match = users.find((u) => typeof u?.email === 'string' && u.email.toLowerCase() === needle);
