@@ -37,6 +37,7 @@ export default function UserManagement() {
   const [hasMore, setHasMore] = useState(false);
   const [selectedById, setSelectedById] = useState<Record<string, boolean>>({});
   const [busyBulk, setBusyBulk] = useState<string | null>(null);
+  const [bulkTier, setBulkTier] = useState<'free' | 'premium' | 'pro'>('pro');
 
   // Dual horizontal scrollbars: one above the table, one on the table container.
   const topScrollRef = useRef<HTMLDivElement | null>(null);
@@ -264,6 +265,29 @@ export default function UserManagement() {
     }
   };
 
+  const bulkSetTier = async () => {
+    if (selectedCount === 0) return;
+    if (!confirm(`Set tier = ${bulkTier} for ${selectedCount} selected users?\n\nThis writes to public.user_subscriptions.`)) return;
+    setBusyBulk(`Setting tier → ${bulkTier}…`);
+    try {
+      for (const id of selectedIds) {
+        const u = users.find((x) => x.id === id);
+        try {
+          await adminFetch(`/api/admin/users/${id}/tier`, {
+            method: 'POST',
+            body: JSON.stringify({ tier: bulkTier, expires_at: expiresAt ? new Date(expiresAt).toISOString() : null }),
+          });
+        } catch (e: any) {
+          console.warn('bulkSetTier failed', { id, email: u?.email, error: e?.message || e });
+        }
+      }
+      await fetchUsers(offset);
+      alert(`Bulk tier update finished.\n\nTier set to: ${bulkTier}\nSelected: ${selectedCount}\n\n(Any failures are logged in console.)`);
+    } finally {
+      setBusyBulk(null);
+    }
+  };
+
   const bulkHardDelete = async () => {
     if (selectedCount === 0) return;
     if (!confirm(`HARD DELETE ${selectedCount} users?\n\nThis cannot be undone.`)) return;
@@ -325,6 +349,21 @@ export default function UserManagement() {
             Selected: {selectedCount} {busyBulk ? `• ${busyBulk}` : ''}
           </div>
           <div className="admin-actions">
+            <select
+              className="admin-select"
+              value={bulkTier}
+              onChange={(e) => setBulkTier((e.target.value as any) || 'pro')}
+              style={{ padding: '10px 12px' }}
+              disabled={!!busyBulk}
+              title="Bulk set tier (writes to public.user_subscriptions)"
+            >
+              <option value="free">Set tier: free</option>
+              <option value="premium">Set tier: premium</option>
+              <option value="pro">Set tier: pro</option>
+            </select>
+            <button className="action-button" onClick={bulkSetTier} disabled={!!busyBulk}>
+              Apply tier
+            </button>
             <button className="action-button" onClick={bulkSendCodes} disabled={!!busyBulk}>
               ✉️ Send Pro codes
             </button>
