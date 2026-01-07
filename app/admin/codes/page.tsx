@@ -25,6 +25,11 @@ type CodeRow = {
   max_uses: number;
   uses_count: number;
   note: string | null;
+  assigned_to?: string | null;
+  assigned_note?: string | null;
+  assigned_at?: string | null;
+  cancelled_at?: string | null;
+  cancelled_note?: string | null;
   created_at: string | null;
   access_code_redemptions?: RedemptionRow[] | null;
 };
@@ -49,6 +54,9 @@ export default function CodesPage() {
   const [rows, setRows] = useState<CodeRow[]>([]);
   const [rowsCount, setRowsCount] = useState<number>(0);
   const [rowsLoading, setRowsLoading] = useState(false);
+  const [edit, setEdit] = useState<Record<string, { assigned_to: string; assigned_note: string }>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const expiresAtIso = useMemo(() => {
     const days = Math.max(1, Math.min(3650, Number(expiresDays) || 30));
@@ -63,6 +71,19 @@ export default function CodesPage() {
       const res = await adminFetch<ListResponse>('/api/admin/codes?limit=200&offset=0');
       setRows(res.rows || []);
       setRowsCount(res.count || 0);
+      // Initialize edit cache for visible rows
+      setEdit((prev) => {
+        const next: Record<string, { assigned_to: string; assigned_note: string }> = { ...prev };
+        for (const r of res.rows || []) {
+          if (!next[r.id]) {
+            next[r.id] = {
+              assigned_to: String((r as any).assigned_to || ''),
+              assigned_note: String((r as any).assigned_note || ''),
+            };
+          }
+        }
+        return next;
+      });
     } catch (e: any) {
       alert(e?.message || 'Failed to load codes');
     } finally {
@@ -118,6 +139,56 @@ export default function CodesPage() {
     a.download = `fl4sh-codes-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const saveAssignment = async (row: CodeRow) => {
+    const v = edit[row.id] || { assigned_to: '', assigned_note: '' };
+    if (!confirm(`Save assignment for ${row.code_pretty}?`)) return;
+    setSavingId(row.id);
+    try {
+      await adminFetch(`/api/admin/codes/${row.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          assigned_to: v.assigned_to.trim() || null,
+          assigned_note: v.assigned_note.trim() || null,
+        }),
+      });
+      await refresh();
+    } catch (e: any) {
+      alert(e?.message || 'Failed to save assignment (is the DB migration applied?)');
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const cancelCode = async (row: CodeRow) => {
+    const reason = prompt('Cancel reason (optional):') || '';
+    if (!confirm(`Cancel code ${row.code_pretty}?\n\nThis will expire it immediately.`)) return;
+    setSavingId(row.id);
+    try {
+      await adminFetch(`/api/admin/codes/${row.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ cancel: true, cancelled_note: reason.trim() || null }),
+      });
+      await refresh();
+    } catch (e: any) {
+      alert(e?.message || 'Failed to cancel code (is the DB migration applied?)');
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const deleteCode = async (row: CodeRow) => {
+    if (!confirm(`DELETE code ${row.code_pretty}?\n\nOnly possible if unused.\nThis cannot be undone.`)) return;
+    setDeletingId(row.id);
+    try {
+      await adminFetch(`/api/admin/codes/${row.id}`, { method: 'DELETE' });
+      await refresh();
+    } catch (e: any) {
+      alert(e?.message || 'Failed to delete code');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -202,14 +273,26 @@ export default function CodesPage() {
               <th style={{ padding: 12 }}>Uses</th>
               <th style={{ padding: 12 }}>Expires</th>
               <th style={{ padding: 12 }}>Note</th>
+              <th style={{ padding: 12 }}>Assigned</th>
+              <th style={{ padding: 12 }}>Assigned note</th>
+              <th style={{ padding: 12 }}>Assigned at</th>
+              <th style={{ padding: 12 }}>Status</th>
               <th style={{ padding: 12 }}>Redeemed by</th>
               <th style={{ padding: 12 }}>Redeemed at</th>
               <th style={{ padding: 12 }}>Created</th>
+              <th style={{ padding: 12 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => {
               const red = (r.access_code_redemptions || [])[0] || null;
+              const isRedeemed = !!red?.redeemed_at || (r.uses_count || 0) > 0;
+              const isCancelled = !!r.cancelled_at;
+              const isAssigned = !!(r.assigned_to && String(r.assigned_to).trim());
+              const status = isCancelled ? 'cancelled' : isRedeemed ? 'redeemed' : isAssigned ? 'assigned' : 'unassigned';
+              const v = edit[r.id] || { assigned_to: String(r.assigned_to || ''), assigned_note: String(r.assigned_note || '') };
+              const changed =
+                v.assigned_to.trim() !== String(r.assigned_to || '').trim() || v.assigned_note.trim() !== String(r.assigned_note || '').trim();
               return (
                 <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <td style={{ padding: 12, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
@@ -221,15 +304,80 @@ export default function CodesPage() {
                   </td>
                   <td style={{ padding: 12 }}>{r.expires_at ? new Date(r.expires_at).toLocaleString() : '—'}</td>
                   <td style={{ padding: 12 }}>{r.note || '—'}</td>
+                  <td style={{ padding: 12 }}>
+                    <input
+                      className="search-input"
+                      style={{ minWidth: 180, padding: 10, fontSize: 14 }}
+                      placeholder="Name / who you sent it to"
+                      value={v.assigned_to}
+                      onChange={(e) => setEdit((m) => ({ ...m, [r.id]: { ...(m[r.id] || v), assigned_to: e.target.value } }))}
+                      disabled={rowsLoading || savingId === r.id || deletingId === r.id || isRedeemed || isCancelled}
+                    />
+                  </td>
+                  <td style={{ padding: 12 }}>
+                    <input
+                      className="search-input"
+                      style={{ minWidth: 260, padding: 10, fontSize: 14 }}
+                      placeholder="Notes (optional)"
+                      value={v.assigned_note}
+                      onChange={(e) => setEdit((m) => ({ ...m, [r.id]: { ...(m[r.id] || v), assigned_note: e.target.value } }))}
+                      disabled={rowsLoading || savingId === r.id || deletingId === r.id || isRedeemed || isCancelled}
+                    />
+                  </td>
+                  <td style={{ padding: 12 }}>
+                    {r.assigned_at ? new Date(r.assigned_at).toLocaleString() : '—'}
+                  </td>
+                  <td style={{ padding: 12 }}>
+                    <span className={`tier-badge tier-${status === 'redeemed' ? 'pro' : status === 'cancelled' ? 'ultimate' : status === 'assigned' ? 'pro' : 'starter'}`}>
+                      {status}
+                    </span>
+                  </td>
                   <td style={{ padding: 12 }}>{red?.user_email || '—'}</td>
                   <td style={{ padding: 12 }}>{red?.redeemed_at ? new Date(red.redeemed_at).toLocaleString() : '—'}</td>
                   <td style={{ padding: 12 }}>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
+                  <td style={{ padding: 12 }}>
+                    <div className="admin-actions">
+                      <button
+                        className="action-button"
+                        style={{ padding: '8px 10px' }}
+                        disabled={!changed || rowsLoading || savingId === r.id || deletingId === r.id || isRedeemed || isCancelled}
+                        onClick={() => saveAssignment(r)}
+                        title="Save assignment fields"
+                      >
+                        💾 Save
+                      </button>
+                      <button
+                        className="action-button"
+                        style={{ padding: '8px 10px', opacity: isCancelled ? 0.5 : 1 }}
+                        disabled={rowsLoading || savingId === r.id || deletingId === r.id || isRedeemed || isCancelled}
+                        onClick={() => cancelCode(r)}
+                        title="Expire immediately (keeps row for tracking)"
+                      >
+                        🚫 Cancel
+                      </button>
+                      <button
+                        className="danger-button"
+                        style={{ padding: '8px 10px' }}
+                        disabled={rowsLoading || savingId === r.id || deletingId === r.id || isRedeemed}
+                        onClick={() => deleteCode(r)}
+                        title="Delete (only if unused)"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                    {r.cancelled_at ? (
+                      <div style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>
+                        Cancelled: {new Date(r.cancelled_at).toLocaleString()}
+                        {r.cancelled_note ? ` • ${r.cancelled_note}` : ''}
+                      </div>
+                    ) : null}
+                  </td>
                 </tr>
               );
             })}
             {rows.length === 0 ? (
               <tr>
-                <td style={{ padding: 12, color: '#94A3B8' }} colSpan={8}>
+                <td style={{ padding: 12, color: '#94A3B8' }} colSpan={12}>
                   {rowsLoading ? 'Loading…' : 'No codes yet.'}
                 </td>
               </tr>
