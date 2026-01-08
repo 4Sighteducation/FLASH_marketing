@@ -7,6 +7,7 @@ export default function TestTools() {
   const [loading, setLoading] = useState(false);
   const [testPassword, setTestPassword] = useState('Test123!ChangeMe');
   const [result, setResult] = useState<string>('');
+  const [pushDebugEmail, setPushDebugEmail] = useState('');
 
   const createTieredTestAccounts = async () => {
     if (!confirm('Create/ensure the 4 tiered test accounts and grant tiers?')) return;
@@ -19,6 +20,23 @@ export default function TestTools() {
       });
       setResult(JSON.stringify(res.accounts, null, 2));
       alert('✅ Test accounts created/updated (see result box).');
+    } catch (e: any) {
+      alert(e.message || 'Failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runDueCardsPushNow = async () => {
+    setLoading(true);
+    setResult('');
+    try {
+      const res = await adminFetch<any>('/api/admin/push/due-cards', {
+        method: 'POST',
+        body: JSON.stringify({ user_email: pushDebugEmail.trim() || null }),
+      });
+      setResult(JSON.stringify(res, null, 2));
+      alert('✅ Push job invoked (see result).');
     } catch (e: any) {
       alert(e.message || 'Failed');
     } finally {
@@ -108,6 +126,7 @@ export default function TestTools() {
         border: '1px solid rgba(255, 255, 255, 0.1)',
         borderRadius: '16px',
         padding: '24px',
+        marginBottom: '24px',
       }}>
         <h3 style={{ color: '#E2E8F0', fontSize: '20px', marginBottom: '12px' }}>
           💻 Database Access
@@ -130,6 +149,40 @@ export default function TestTools() {
             Open Supabase SQL Editor →
           </a>
         </div>
+      </div>
+
+      {/* Push Notifications */}
+      <div style={{
+        background: 'rgba(255, 255, 255, 0.03)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '16px',
+        padding: '24px',
+      }}>
+        <h3 style={{ color: '#E2E8F0', fontSize: '20px', marginBottom: '12px' }}>
+          🔔 Push Notifications (Due Cards)
+        </h3>
+        <p style={{ color: '#94A3B8', fontSize: '14px', marginBottom: '16px' }}>
+          Invokes the Supabase Edge Function <code style={{ color: '#00F5FF' }}>send-daily-due-cards</code>.
+          <br />
+          Optional: enter a user email to request debug output (only works if the function has <code style={{ color: '#00F5FF' }}>ALLOW_DUE_CARDS_DEBUG=true</code>).
+        </p>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ color: '#94A3B8', fontSize: 14, display: 'block', marginBottom: 8 }}>
+            Debug email (optional)
+          </label>
+          <input
+            className="search-input"
+            value={pushDebugEmail}
+            onChange={(e) => setPushDebugEmail(e.target.value)}
+            placeholder="e.g. tony@vespa.academy"
+            style={{ maxWidth: 420 }}
+          />
+        </div>
+
+        <button onClick={runDueCardsPushNow} disabled={loading} className="action-button">
+          🚀 Run due-cards push job now
+        </button>
       </div>
     </div>
   );
