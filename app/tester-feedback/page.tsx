@@ -3,7 +3,7 @@
 
 import React, { useMemo, useState } from 'react';
 
-type QuestionType = 'rating_1_7' | 'text' | 'single_choice' | 'boolean';
+type QuestionType = 'rating_1_7' | 'text' | 'single_choice' | 'multi_choice' | 'boolean';
 type Question = {
   id: string;
   type: QuestionType;
@@ -11,35 +11,54 @@ type Question = {
   description?: string;
   required?: boolean;
   options?: string[];
+  placeholder?: string;
 };
-type Section = { id: string; title: string; description?: string; questions: Question[] };
+type Section = {
+  id: string;
+  title: string;
+  description?: string;
+  questions: Question[];
+};
+
+type Answers = Record<string, any>;
 
 const SURVEY_KEY = 'tester_feedback_v1';
+const looksLikeEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || '').trim());
 
-// Short enough to complete, but covers the core app journeys.
-// Everything is required to qualify as “completed in full” for the voucher.
-const sections: Section[] = [
+function withSectionFreeText(sections: Section[]): Section[] {
+  return sections.map((s) => ({
+    ...s,
+    questions: [
+      ...s.questions,
+      {
+        id: `anything_else__${s.id}`,
+        type: 'text',
+        prompt: `Anything else to tell us about ${s.title}? (optional)`,
+        required: false,
+        placeholder: 'Type here…',
+      },
+    ],
+  }));
+}
+
+const sections: Section[] = withSectionFreeText([
   {
     id: 'capture',
     title: 'Quick intro',
     description:
       'Complete this questionnaire in full and we’ll send you a £10 Costa voucher. To claim it, please provide an email address.',
     questions: [
-      { id: 'participant_name', type: 'text', prompt: 'Your name', required: true },
+      { id: 'participant_name', type: 'text', prompt: 'Your name', required: true, placeholder: 'e.g. Alex Smith' },
       { id: 'claim_voucher', type: 'boolean', prompt: 'I want to claim the £10 Costa voucher', required: true },
       {
         id: 'participant_email',
         type: 'text',
         prompt: 'Email address (for voucher + follow-up)',
         description: 'Required if you want the voucher.',
-        required: false, // conditional (claim_voucher === true)
+        required: false, // conditional when claim_voucher === true
+        placeholder: 'name@example.com',
       },
-      {
-        id: 'consent',
-        type: 'boolean',
-        prompt: 'I agree my feedback may be stored and used to improve the product.',
-        required: true,
-      },
+      { id: 'consent', type: 'boolean', prompt: 'I agree my feedback may be stored and used to improve the product.', required: true },
       { id: 'follow_up_ok', type: 'boolean', prompt: 'Can we follow up with you if needed?', required: true },
     ],
   },
@@ -51,8 +70,22 @@ const sections: Section[] = [
       { id: 'overall_polished', type: 'rating_1_7', prompt: 'The app feels polished and trustworthy.', required: true },
       { id: 'overall_navigation', type: 'rating_1_7', prompt: 'Navigation is clear (Home / Study / Papers / Profile).', required: true },
       { id: 'overall_fast', type: 'rating_1_7', prompt: 'The app feels fast and responsive.', required: true },
-      { id: 'overall_loved', type: 'text', prompt: 'One thing you loved', required: true },
-      { id: 'overall_change_first', type: 'text', prompt: 'One thing you would change first', required: true },
+      {
+        id: 'overall_loved_pick',
+        type: 'single_choice',
+        prompt: 'What did you love most?',
+        required: true,
+        options: ['Design/UX', 'AI card generation', 'Studying (Leitner)', 'Topic discovery', 'Speed', 'Other'],
+      },
+      { id: 'overall_loved_other', type: 'text', prompt: 'If “Other”, tell us what you loved (optional)', required: false, placeholder: 'Type here…' },
+      {
+        id: 'overall_change_first_pick',
+        type: 'single_choice',
+        prompt: 'What would you change first?',
+        required: true,
+        options: ['Fix bugs', 'Improve performance', 'Make navigation clearer', 'Improve AI quality', 'Simplify onboarding', 'Improve study experience', 'Other'],
+      },
+      { id: 'overall_change_first_other', type: 'text', prompt: 'If “Other”, tell us what you would change (optional)', required: false, placeholder: 'Type here…' },
     ],
   },
   {
@@ -63,7 +96,14 @@ const sections: Section[] = [
       { id: 'auth_terms_clear', type: 'rating_1_7', prompt: 'Terms & Privacy agreement step was clear.', required: true },
       { id: 'auth_login_errors', type: 'rating_1_7', prompt: 'Login errors were clear and helpful.', required: true },
       { id: 'auth_forgot_password', type: 'rating_1_7', prompt: 'Forgot password flow worked as expected.', required: true },
-      { id: 'auth_issues', type: 'text', prompt: 'Any auth issues? Steps + severity (Low/Medium/High/Blocking)', required: true },
+      {
+        id: 'auth_issues_level',
+        type: 'single_choice',
+        prompt: 'Did you have any issues with login/sign up/password reset?',
+        required: true,
+        options: ['No issues', 'Minor issue', 'Major issue', 'Blocking issue', 'Didn’t try'],
+      },
+      { id: 'auth_issues_details', type: 'text', prompt: 'If you had an issue, add details/steps (optional)', required: false, placeholder: 'Steps to reproduce…' },
     ],
   },
   {
@@ -72,13 +112,15 @@ const sections: Section[] = [
     questions: [
       { id: 'onboarding_clear', type: 'rating_1_7', prompt: 'Onboarding flow was clear (Welcome → exam type → subjects).', required: true },
       { id: 'onboarding_subject_search', type: 'rating_1_7', prompt: 'Subject selection/search was easy.', required: true },
+      { id: 'onboarding_matches_reality', type: 'rating_1_7', prompt: '“Search a topic → AI generates cards → you study with spaced repetition” matched reality.', required: true },
       {
-        id: 'onboarding_matches_reality',
-        type: 'rating_1_7',
-        prompt: '“Search a topic → AI generates cards → you study with spaced repetition” matched reality.',
+        id: 'onboarding_confusing_level',
+        type: 'single_choice',
+        prompt: 'How confusing was onboarding?',
         required: true,
+        options: ['Not confusing', 'A little confusing', 'Confusing', 'Very confusing', 'Didn’t do onboarding', 'Other'],
       },
-      { id: 'onboarding_confusing', type: 'text', prompt: 'Where did you hesitate or feel unsure?', required: true },
+      { id: 'onboarding_confusing_details', type: 'text', prompt: 'If confusing, where/why? (optional)', required: false, placeholder: 'Type here…' },
     ],
   },
   {
@@ -90,48 +132,49 @@ const sections: Section[] = [
       { id: 'study_bank_understand', type: 'rating_1_7', prompt: 'I understand Card Bank vs Study Bank.', required: true },
       { id: 'study_leitner_fair', type: 'rating_1_7', prompt: 'Leitner boxes + Cards Due feel fair and motivating.', required: true },
       { id: 'study_smooth', type: 'rating_1_7', prompt: 'Study sessions were smooth (no lag/freezes).', required: true },
-      { id: 'study_confusing', type: 'text', prompt: 'Most confusing part of studying (and why)', required: true },
+      {
+        id: 'study_confusing_pick',
+        type: 'single_choice',
+        prompt: 'Most confusing part of studying (if any)',
+        required: true,
+        options: ['Nothing confusing', 'Card Bank vs Study Bank', 'Leitner boxes / cards due', 'What to do next', 'UI/buttons', 'Other'],
+      },
+      { id: 'study_confusing_details', type: 'text', prompt: 'Optional details (if applicable)', required: false, placeholder: 'Type here…' },
     ],
   },
   {
     id: 'create_cards',
     title: 'Create flashcards',
     questions: [
-      {
-        id: 'create_choice_clear',
-        type: 'rating_1_7',
-        prompt: 'Creating cards is clear (AI Generated / Create Manually / From Image).',
-        required: true,
-      },
+      { id: 'create_choice_clear', type: 'rating_1_7', prompt: 'Creating cards is clear (AI Generated / Create Manually / From Image).', required: true },
       { id: 'create_ai_types', type: 'rating_1_7', prompt: 'AI card types were clear (MCQ / Short Answer / Essay / Acronym).', required: true },
-      { id: 'create_ai_quality', type: 'text', prompt: 'AI quality: what was great / what was wrong? (examples)', required: true },
+      {
+        id: 'create_ai_quality_pick',
+        type: 'single_choice',
+        prompt: 'Overall AI card quality',
+        required: true,
+        options: ['Excellent', 'Good', 'OK', 'Poor', 'Failed to generate', 'Didn’t try', 'Other'],
+      },
+      { id: 'create_ai_quality_details', type: 'text', prompt: 'Optional examples (what was great/wrong?)', required: false, placeholder: 'Type here…' },
     ],
   },
   {
     id: 'wrap',
     title: 'Finish',
     questions: [
+      { id: 'overall_satisfaction_1_10', type: 'single_choice', prompt: 'Overall satisfaction (1–10)', required: true, options: ['1','2','3','4','5','6','7','8','9','10'] },
+      { id: 'nps_0_10', type: 'single_choice', prompt: 'Likelihood to recommend (0–10)', required: true, options: ['0','1','2','3','4','5','6','7','8','9','10'] },
       {
-        id: 'overall_satisfaction_1_10',
-        type: 'single_choice',
-        prompt: 'Overall satisfaction (1–10)',
+        id: 'top_improvements',
+        type: 'multi_choice',
+        prompt: 'Which areas need improvement? (pick up to 3)',
         required: true,
-        options: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+        options: ['Onboarding', 'Navigation', 'Topic discovery/search', 'AI card quality', 'Studying (Leitner)', 'Performance/speed', 'Bugs/crashes', 'Pricing/paywall', 'Other'],
       },
-      {
-        id: 'nps_0_10',
-        type: 'single_choice',
-        prompt: 'Likelihood to recommend (0–10)',
-        required: true,
-        options: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
-      },
-      { id: 'top_3_improvements', type: 'text', prompt: 'Top 3 improvements (ranked)', required: true },
+      { id: 'top_improvements_other', type: 'text', prompt: 'If “Other”, tell us what area (optional)', required: false, placeholder: 'Type here…' },
     ],
   },
-];
-
-type Answers = Record<string, any>;
-const looksLikeEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || '').trim());
+]);
 
 function ProgressBar({ value }: { value: number }) {
   return (
@@ -220,6 +263,55 @@ function ChoiceRow({ options, value, onChange }: { options: string[]; value?: st
   );
 }
 
+function MultiChoiceRow({
+  options,
+  value,
+  onChange,
+  maxSelected,
+}: {
+  options: string[];
+  value?: string[];
+  onChange: (v: string[]) => void;
+  maxSelected?: number;
+}) {
+  const selected = new Set<string>(Array.isArray(value) ? value : []);
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
+      {options.map((opt) => {
+        const active = selected.has(opt);
+        const disabled = !active && typeof maxSelected === 'number' && selected.size >= maxSelected;
+        return (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => {
+              const next = new Set(selected);
+              if (next.has(opt)) next.delete(opt);
+              else if (!disabled) next.add(opt);
+              onChange(Array.from(next));
+            }}
+            disabled={disabled}
+            style={{
+              padding: '10px 12px',
+              borderRadius: 999,
+              border: active ? '2px solid rgba(0,229,255,1)' : '1px solid rgba(148,163,184,0.35)',
+              background: active ? 'rgba(0,245,255,0.12)' : 'rgba(255,255,255,0.03)',
+              color: active ? '#00E5FF' : '#CBD5E1',
+              fontWeight: 900,
+              fontSize: 12,
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              opacity: disabled ? 0.5 : 1,
+            }}
+            aria-pressed={active}
+          >
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function BooleanRow({ value, onChange }: { value?: boolean; onChange: (v: boolean) => void }) {
   return (
     <ChoiceRow
@@ -237,6 +329,7 @@ function isMissingRequired(q: Question, answers: Answers): boolean {
   if (q.type === 'rating_1_7') return typeof v !== 'number' || v < 1 || v > 7;
   if (q.type === 'boolean') return typeof v !== 'boolean';
   if (q.type === 'single_choice') return !v;
+  if (q.type === 'multi_choice') return !Array.isArray(v) || v.length === 0;
   return !v;
 }
 
@@ -317,28 +410,46 @@ export default function TesterFeedbackPage() {
 
   const stepMissing = useMemo(() => {
     const missing: string[] = [];
+
     for (const q of current.questions) {
-      const voucherEmailMissing =
-        q.id === 'participant_email' && answers.claim_voucher === true && !looksLikeEmail(answers.participant_email || '');
-      if (voucherEmailMissing) missing.push(q.id);
-      else if (isMissingRequired(q, answers)) missing.push(q.id);
+      // Conditionally show/require voucher email.
+      if (q.id === 'participant_email') {
+        if (answers.claim_voucher === true && !looksLikeEmail(answers.participant_email || '')) missing.push(q.id);
+        continue;
+      }
+
+      // Only require "Other" details if the user selected Other.
+      if (q.id.endsWith('_other')) {
+        const base = q.id.replace(/_other$/, '');
+        const pick = answers[`${base}_pick`];
+        if (pick === 'Other') {
+          // optional (never required) for this survey; keep it missing=false
+        }
+        continue;
+      }
+
+      if (isMissingRequired(q, answers)) missing.push(q.id);
     }
+
+    // Special: improvements multi-select max 3 is enforced in UI, but also require 1..3.
+    if (current.id === 'wrap') {
+      const picks = answers.top_improvements;
+      if (!Array.isArray(picks) || picks.length === 0) missing.push('top_improvements');
+    }
+
     return new Set(missing);
-  }, [current.questions, answers]);
+  }, [current, answers]);
 
   const canNext = stepMissing.size === 0;
-
-  const scrollToFirstMissing = () => {
-    const first = Array.from(stepMissing)[0];
-    if (!first) return;
-    const el = document.getElementById(`q-${first}`);
-    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  };
 
   const onNext = () => {
     if (!canNext) {
       setError('Please complete the highlighted fields to continue.');
-      scrollToFirstMissing();
+      const first = Array.from(stepMissing)[0];
+      if (first) {
+        const el = document.getElementById(`q-${first}`);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
     setError(null);
@@ -353,13 +464,18 @@ export default function TesterFeedbackPage() {
   };
 
   const submit = async () => {
-    // Enforce "complete in full": every required question must be answered.
+    // Enforce "complete in full": every required question must be answered, plus voucher email if claiming.
     for (const sec of sections) {
       for (const q of sec.questions) {
-        const voucherEmailMissing =
-          q.id === 'participant_email' && answers.claim_voucher === true && !looksLikeEmail(answers.participant_email || '');
-        if (voucherEmailMissing || isMissingRequired(q, answers)) {
-          setError('Please complete all questions before submitting (voucher requires full completion).');
+        if (q.id === 'participant_email') {
+          if (answers.claim_voucher === true && !looksLikeEmail(answers.participant_email || '')) {
+            setError('Please enter a valid email address to claim the voucher.');
+            return;
+          }
+          continue;
+        }
+        if (isMissingRequired(q, answers)) {
+          setError('Please complete all required questions before submitting.');
           return;
         }
       }
@@ -394,38 +510,18 @@ export default function TesterFeedbackPage() {
     padding: 16,
   };
 
-  const renderTextControl = (q: Question, v: any) => {
-    const isSingleLine = q.id === 'participant_name' || q.id === 'participant_email';
-    const commonStyle: React.CSSProperties = {
-      width: '100%',
-      borderRadius: 14,
-      border: '1px solid rgba(148,163,184,0.35)',
-      background: 'rgba(255,255,255,0.03)',
-      color: '#fff',
-      padding: 12,
-      fontWeight: 700,
-      outline: 'none',
-    };
-
-    if (isSingleLine) {
-      return (
-        <input
-          value={typeof v === 'string' ? v : ''}
-          onChange={(e) => setAnswer(q.id, e.target.value)}
-          placeholder={q.id === 'participant_email' ? 'name@example.com' : 'Type here…'}
-          style={{ ...commonStyle, height: 46 }}
-        />
-      );
+  const shouldRenderQuestion = (q: Question) => {
+    if (q.id === 'participant_email' && answers.claim_voucher !== true) return false;
+    if (q.id.endsWith('_other')) {
+      const base = q.id.replace(/_other$/, '');
+      const pick = answers[`${base}_pick`];
+      return pick === 'Other';
     }
-
-    return (
-      <textarea
-        value={typeof v === 'string' ? v : ''}
-        onChange={(e) => setAnswer(q.id, e.target.value)}
-        placeholder="Type your answer…"
-        style={{ ...commonStyle, minHeight: 90, resize: 'vertical' as any }}
-      />
-    );
+    if (q.id === 'top_improvements_other') {
+      const picks = answers.top_improvements;
+      return Array.isArray(picks) && picks.includes('Other');
+    }
+    return true;
   };
 
   return (
@@ -442,8 +538,7 @@ export default function TesterFeedbackPage() {
             </p>
             {answers.claim_voucher === true ? (
               <p style={{ margin: 0, color: '#E2E8F0', fontWeight: 800 }}>
-                Voucher: we’ll email your £10 Costa voucher to{' '}
-                <span style={{ color: '#00E5FF' }}>{answers.participant_email}</span>.
+                Voucher: we’ll email your £10 Costa voucher to <span style={{ color: '#00E5FF' }}>{answers.participant_email}</span>.
               </p>
             ) : (
               <p style={{ margin: 0, color: '#94A3B8', fontWeight: 700 }}>Voucher: not requested.</p>
@@ -484,13 +579,9 @@ export default function TesterFeedbackPage() {
           </div>
         ) : null}
 
-        {current.questions.map((q) => {
-          // Only show email when voucher is being claimed (reduces confusion).
-          if (q.id === 'participant_email' && answers.claim_voucher !== true) return null;
-
+        {current.questions.filter(shouldRenderQuestion).map((q) => {
           const v = answers[q.id];
           const missing = stepMissing.has(q.id);
-
           return (
             <div
               key={q.id}
@@ -507,17 +598,38 @@ export default function TesterFeedbackPage() {
                   <Rating1to7 value={typeof v === 'number' ? v : undefined} onChange={(n) => setAnswer(q.id, n)} />
                 ) : q.type === 'text' ? (
                   <>
-                    {renderTextControl(q, v)}
-                    {q.id === 'participant_email' && answers.claim_voucher === true ? (
-                      !looksLikeEmail(answers.participant_email || '') ? (
-                        <div style={{ marginTop: 8, color: '#FF4FD8', fontWeight: 800 }}>
-                          Please enter a valid email address (e.g. name@example.com) to claim the voucher.
-                        </div>
-                      ) : null
+                    <textarea
+                      value={typeof v === 'string' ? v : ''}
+                      onChange={(e) => setAnswer(q.id, e.target.value)}
+                      placeholder={q.placeholder || 'Type your answer…'}
+                      style={{
+                        width: '100%',
+                        minHeight: q.id === 'participant_email' ? 64 : 90,
+                        borderRadius: 14,
+                        border: '1px solid rgba(148,163,184,0.35)',
+                        background: 'rgba(255,255,255,0.03)',
+                        color: '#fff',
+                        padding: 12,
+                        fontWeight: 700,
+                        outline: 'none',
+                        resize: 'vertical',
+                      }}
+                    />
+                    {q.id === 'participant_email' && answers.claim_voucher === true && !looksLikeEmail(answers.participant_email || '') ? (
+                      <div style={{ marginTop: 8, color: '#FF4FD8', fontWeight: 800 }}>
+                        Please enter a valid email address (e.g. name@example.com) to claim the voucher.
+                      </div>
                     ) : null}
                   </>
                 ) : q.type === 'single_choice' ? (
                   <ChoiceRow options={q.options || []} value={typeof v === 'string' ? v : undefined} onChange={(x) => setAnswer(q.id, x)} />
+                ) : q.type === 'multi_choice' ? (
+                  <MultiChoiceRow
+                    options={q.options || []}
+                    value={Array.isArray(v) ? v : []}
+                    maxSelected={q.id === 'top_improvements' ? 3 : undefined}
+                    onChange={(xs) => setAnswer(q.id, xs)}
+                  />
                 ) : q.type === 'boolean' ? (
                   <BooleanRow value={typeof v === 'boolean' ? v : undefined} onChange={(b) => setAnswer(q.id, b)} />
                 ) : null}
@@ -560,8 +672,475 @@ export default function TesterFeedbackPage() {
                 fontWeight: 900,
                 cursor: submitting ? 'not-allowed' : 'pointer',
                 minWidth: 160,
+                opacity: submitting ? 0.7 : 1,
               }}
               aria-disabled={!canNext}
+            >
+              Next
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={submit}
+              disabled={submitting}
+              style={{
+                padding: '12px 14px',
+                borderRadius: 14,
+                border: '0',
+                background: 'linear-gradient(90deg,#00E5FF,#FF4FD8)',
+                color: '#0B1020',
+                fontWeight: 900,
+                cursor: 'pointer',
+                minWidth: 200,
+                opacity: submitting ? 0.7 : 1,
+              }}
+            >
+              {submitting ? 'Submitting…' : 'Submit'}
+            </button>
+          )}
+        </div>
+
+        <div style={{ color: '#94A3B8', fontWeight: 700, fontSize: 12, marginTop: 10 }}>
+          Tip: Include steps to reproduce + severity (Low/Medium/High/Blocking) where relevant.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+'use client';
+
+import React, { useMemo, useState } from 'react';
+
+type QuestionType = 'rating_1_7' | 'text' | 'single_choice' | 'multi_choice' | 'boolean';
+type Question = {
+  id: string;
+  type: QuestionType;
+  prompt: string;
+  description?: string;
+  required?: boolean;
+  options?: string[];
+};
+type Section = { id: string; title: string; description?: string; questions: Question[] };
+
+const SURVEY_KEY = 'tester_feedback_v1';
+
+const sections: Section[] = [
+  {
+    id: 'intro',
+    title: 'Thanks for testing FLASH',
+    description:
+      'Complete this questionnaire in full and we’ll send you a £10 Costa voucher. To claim it, you’ll need to provide an email address.',
+    questions: [
+      { id: 'participant_name', type: 'text', prompt: 'Your name', required: true },
+      { id: 'claim_voucher', type: 'boolean', prompt: 'I want to claim the £10 Costa voucher', required: true },
+      {
+        id: 'participant_email',
+        type: 'text',
+        prompt: 'Email address (for voucher + follow-up)',
+        description: 'Required if you want the voucher.',
+        required: false, // conditional: required when claim_voucher === true
+      },
+      {
+        id: 'consent',
+        type: 'boolean',
+        prompt: 'I agree my feedback may be stored and used to improve the product.',
+        required: true,
+      },
+      { id: 'follow_up_ok', type: 'boolean', prompt: 'Can we follow up with you if needed?', required: false },
+    ],
+  },
+  {
+    id: 'overall',
+    title: 'Overall',
+    questions: [
+      { id: 'overall_understood', type: 'rating_1_7', prompt: 'I immediately understood what FLASH is for.', required: true },
+      { id: 'overall_polished', type: 'rating_1_7', prompt: 'The app feels polished and trustworthy.', required: true },
+      { id: 'overall_navigation', type: 'rating_1_7', prompt: 'Navigation is clear (Home / Study / Papers / Profile).', required: true },
+      { id: 'overall_fast', type: 'rating_1_7', prompt: 'The app feels fast and responsive.', required: true },
+      { id: 'overall_loved', type: 'text', prompt: 'One thing you loved', required: true },
+      { id: 'overall_change_first', type: 'text', prompt: 'One thing you would change first', required: true },
+    ],
+  },
+  {
+    id: 'auth',
+    title: 'Login / Sign Up / Password reset',
+    questions: [
+      { id: 'auth_signup_easy', type: 'rating_1_7', prompt: 'Sign up was straightforward.', required: true },
+      { id: 'auth_terms_clear', type: 'rating_1_7', prompt: 'Terms & Privacy agreement step was clear.', required: true },
+      { id: 'auth_login_errors', type: 'rating_1_7', prompt: 'Login errors were clear and helpful.', required: true },
+      { id: 'auth_forgot_password', type: 'rating_1_7', prompt: 'Forgot password flow worked as expected.', required: true },
+      { id: 'auth_issues', type: 'text', prompt: 'Any auth issues? Steps + severity (optional)', required: false },
+    ],
+  },
+  {
+    id: 'onboarding',
+    title: 'Onboarding',
+    questions: [
+      { id: 'onboarding_clear', type: 'rating_1_7', prompt: 'Onboarding flow was clear (Welcome → exam type → subjects).', required: true },
+      { id: 'onboarding_subject_search', type: 'rating_1_7', prompt: 'SubjectSearch made it easy to find/select subjects.', required: true },
+      {
+        id: 'onboarding_matches_reality',
+        type: 'rating_1_7',
+        prompt: '“Search a topic → AI generates cards → you study with spaced repetition” matched reality.',
+        required: true,
+      },
+      { id: 'onboarding_confusing', type: 'text', prompt: 'Where did you hesitate or feel unsure?', required: true },
+    ],
+  },
+  {
+    id: 'home',
+    title: 'Home tab',
+    questions: [
+      { id: 'home_next_steps', type: 'rating_1_7', prompt: 'Home helped me understand what to do today.', required: true },
+      { id: 'home_cards_due', type: 'rating_1_7', prompt: 'Cards Due reminders/notifications were helpful (not annoying).', required: true },
+      { id: 'home_progress', type: 'rating_1_7', prompt: 'Subject progress info was easy to interpret.', required: true },
+      { id: 'home_gamification', type: 'rating_1_7', prompt: 'XP/points/streak felt motivating (not distracting).', required: true },
+    ],
+  },
+  {
+    id: 'create_cards',
+    title: 'Create Flashcards',
+    questions: [
+      {
+        id: 'create_choice_clear',
+        type: 'rating_1_7',
+        prompt: '“Create Flashcards” options were clear (AI Generated / Create Manually / From Image).',
+        required: true,
+      },
+      { id: 'create_ai_types', type: 'rating_1_7', prompt: 'AI card types were clear (MCQ / Short Answer / Essay / Acronym).', required: true },
+      { id: 'create_ai_quality', type: 'text', prompt: 'AI quality: what was great / what was wrong? (examples)', required: true },
+    ],
+  },
+  {
+    id: 'study',
+    title: 'Study',
+    questions: [
+      { id: 'study_bank_understand', type: 'rating_1_7', prompt: 'I understand Card Bank vs Study Bank.', required: true },
+      { id: 'study_leitner_fair', type: 'rating_1_7', prompt: 'Leitner boxes + Cards Due feel fair and motivating.', required: true },
+      { id: 'study_smooth', type: 'rating_1_7', prompt: 'Study sessions were smooth (no lag/freezes).', required: true },
+      { id: 'study_confusing', type: 'text', prompt: 'Most confusing part of study (and why)', required: true },
+    ],
+  },
+  {
+    id: 'wrap',
+    title: 'Final',
+    questions: [
+      { id: 'overall_satisfaction_1_10', type: 'single_choice', prompt: 'Overall satisfaction (1–10)', required: true, options: ['1','2','3','4','5','6','7','8','9','10'] },
+      { id: 'nps_0_10', type: 'single_choice', prompt: 'Likelihood to recommend (0–10)', required: true, options: ['0','1','2','3','4','5','6','7','8','9','10'] },
+      { id: 'top_3_improvements', type: 'text', prompt: 'Top 3 improvements (ranked)', required: true },
+    ],
+  },
+];
+
+type Answers = Record<string, any>;
+
+const looksLikeEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || '').trim());
+
+function ProgressBar({ value }: { value: number }) {
+  return (
+    <div style={{ width: '100%', height: 10, background: 'rgba(255,255,255,0.08)', borderRadius: 999 }}>
+      <div
+        style={{
+          height: '100%',
+          width: `${Math.max(0, Math.min(100, value))}%`,
+          background: 'linear-gradient(90deg,#00E5FF,#FF4FD8)',
+          borderRadius: 999,
+          transition: 'width 200ms ease',
+        }}
+      />
+    </div>
+  );
+}
+
+function Rating1to7({ value, onChange }: { value?: number; onChange: (v: number) => void }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(36px, 1fr))', gap: 10, width: '100%', maxWidth: 520 }}>
+      {Array.from({ length: 7 }).map((_, i) => {
+        const n = i + 1;
+        const active = value === n;
+        return (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onChange(n)}
+            style={{
+              height: 44,
+              borderRadius: 999,
+              border: active ? '2px solid rgba(0,229,255,1)' : '1px solid rgba(148,163,184,0.35)',
+              background: active ? 'rgba(0,245,255,0.12)' : 'rgba(255,255,255,0.03)',
+              color: active ? '#00E5FF' : '#CBD5E1',
+              fontWeight: 900,
+              cursor: 'pointer',
+            }}
+            aria-pressed={active}
+          >
+            {n}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ChoiceRow({ options, value, onChange }: { options: string[]; value?: string; onChange: (v: string) => void }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+      {options.map((opt) => {
+        const active = value === opt;
+        return (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onChange(opt)}
+            style={{
+              padding: '10px 12px',
+              borderRadius: 999,
+              border: active ? '2px solid rgba(0,229,255,1)' : '1px solid rgba(148,163,184,0.35)',
+              background: active ? 'rgba(0,245,255,0.12)' : 'rgba(255,255,255,0.03)',
+              color: active ? '#00E5FF' : '#CBD5E1',
+              fontWeight: 900,
+              fontSize: 12,
+              cursor: 'pointer',
+            }}
+            aria-pressed={active}
+          >
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function BooleanRow({ value, onChange }: { value?: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <ChoiceRow
+      options={['Yes', 'No']}
+      value={typeof value === 'boolean' ? (value ? 'Yes' : 'No') : undefined}
+      onChange={(v) => onChange(v === 'Yes')}
+    />
+  );
+}
+
+function isMissingRequired(q: Question, answers: Answers): boolean {
+  if (!q.required) return false;
+  const v = answers[q.id];
+  if (q.type === 'text') return !v || String(v).trim().length === 0;
+  if (q.type === 'rating_1_7') return typeof v !== 'number' || v < 1 || v > 7;
+  if (q.type === 'boolean') return typeof v !== 'boolean';
+  if (q.type === 'single_choice') return !v;
+  if (q.type === 'multi_choice') return !Array.isArray(v) || v.length === 0;
+  return !v;
+}
+
+export default function TesterFeedbackPage() {
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState<Answers>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState<{ id: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const current = sections[step]!;
+  const totalSteps = sections.length;
+  const progress = Math.round(((step + 1) / totalSteps) * 100);
+
+  const setAnswer = (id: string, value: any) => setAnswers((p) => ({ ...p, [id]: value }));
+
+  const requiredMissing = useMemo(() => {
+    const missing: string[] = [];
+    for (const q of current.questions) {
+      const isVoucherEmailMissing = q.id === 'participant_email' && answers.claim_voucher === true && !looksLikeEmail(answers.participant_email || '');
+      if (isVoucherEmailMissing) missing.push(q.id);
+      else if (isMissingRequired(q, answers)) missing.push(q.id);
+    }
+    return new Set(missing);
+  }, [current.questions, answers]);
+
+  const canNext = requiredMissing.size === 0;
+
+  const onNext = () => {
+    if (!canNext) return;
+    setStep((s) => Math.min(totalSteps - 1, s + 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const onBack = () => {
+    setStep((s) => Math.max(0, s - 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const submit = async () => {
+    // Enforce full completion: every section must be complete
+    for (const sec of sections) {
+      for (const q of sec.questions) {
+        const isVoucherEmailMissing = q.id === 'participant_email' && answers.claim_voucher === true && !looksLikeEmail(answers.participant_email || '');
+        if (isVoucherEmailMissing || isMissingRequired(q, answers)) {
+          setError('Please complete all required questions before submitting.');
+          return;
+        }
+      }
+    }
+    if (answers.consent !== true) {
+      setError('Consent is required to submit.');
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/tester-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ survey_key: SURVEY_KEY, answers }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || 'Failed to submit');
+      setDone({ id: json?.id });
+    } catch (e: any) {
+      setError(String(e?.message || e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const cardStyle: React.CSSProperties = {
+    border: '1px solid rgba(255,255,255,0.12)',
+    background: 'rgba(255,255,255,0.04)',
+    borderRadius: 18,
+    padding: 16,
+  };
+
+  if (done) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0a0f1e', padding: 18, color: '#fff' }}>
+        <div style={{ maxWidth: 860, margin: '0 auto', display: 'grid', gap: 14 }}>
+          <div style={cardStyle}>
+            <h1 style={{ fontSize: 26, margin: 0, fontWeight: 900 }}>Thank you!</h1>
+            <p style={{ marginTop: 10, color: '#94A3B8', fontWeight: 700, lineHeight: 1.5 }}>
+              Your response has been submitted successfully.
+            </p>
+            <p style={{ marginTop: 10, color: '#94A3B8', fontWeight: 700 }}>
+              Reference: <span style={{ color: '#00E5FF', fontWeight: 900 }}>#{done.id}</span>
+            </p>
+            {answers.claim_voucher === true ? (
+              <p style={{ marginTop: 12, color: '#E2E8F0', fontWeight: 800 }}>
+                Voucher: We’ll email your £10 Costa voucher to <span style={{ color: '#00E5FF' }}>{answers.participant_email}</span>.
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#0a0f1e', padding: 18, color: '#fff' }}>
+      <div style={{ maxWidth: 860, margin: '0 auto', display: 'grid', gap: 14 }}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+          <img src="/costa-coffee-logo.png" alt="Costa Coffee" style={{ height: 42, width: 'auto' }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+              <div style={{ fontWeight: 900 }}>{current.title}</div>
+              <div style={{ color: '#94A3B8', fontWeight: 800 }}>
+                Step {step + 1} of {totalSteps}
+              </div>
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <ProgressBar value={progress} />
+            </div>
+          </div>
+        </div>
+
+        <div style={cardStyle}>
+          <h1 style={{ fontSize: 26, margin: 0, fontWeight: 900 }}>FLASH Tester Feedback</h1>
+          {current.description ? (
+            <p style={{ marginTop: 10, color: '#94A3B8', fontWeight: 700, lineHeight: 1.5 }}>{current.description}</p>
+          ) : null}
+        </div>
+
+        {error ? (
+          <div style={{ ...cardStyle, borderColor: 'rgba(255,0,110,0.6)' }}>
+            <div style={{ fontWeight: 900, color: '#FF4FD8' }}>{error}</div>
+          </div>
+        ) : null}
+
+        {current.questions.map((q) => {
+          const v = answers[q.id];
+          const missing = requiredMissing.has(q.id);
+          return (
+            <div key={q.id} style={{ ...cardStyle, borderColor: missing ? 'rgba(255,0,110,0.8)' : 'rgba(255,255,255,0.12)' }}>
+              <div style={{ fontWeight: 900 }}>
+                {q.prompt} {q.required ? <span style={{ color: '#FF4FD8' }}>*</span> : null}
+              </div>
+              {q.description ? <div style={{ marginTop: 6, color: '#94A3B8', fontWeight: 700 }}>{q.description}</div> : null}
+
+              <div style={{ marginTop: 12 }}>
+                {q.type === 'rating_1_7' ? (
+                  <Rating1to7 value={typeof v === 'number' ? v : undefined} onChange={(n) => setAnswer(q.id, n)} />
+                ) : q.type === 'text' ? (
+                  <textarea
+                    value={typeof v === 'string' ? v : ''}
+                    onChange={(e) => setAnswer(q.id, e.target.value)}
+                    placeholder="Type your answer…"
+                    style={{
+                      width: '100%',
+                      minHeight: 90,
+                      borderRadius: 14,
+                      border: '1px solid rgba(148,163,184,0.35)',
+                      background: 'rgba(255,255,255,0.03)',
+                      color: '#fff',
+                      padding: 12,
+                      fontWeight: 700,
+                      outline: 'none',
+                      resize: 'vertical',
+                    }}
+                  />
+                ) : q.type === 'single_choice' ? (
+                  <ChoiceRow options={q.options || []} value={typeof v === 'string' ? v : undefined} onChange={(x) => setAnswer(q.id, x)} />
+                ) : q.type === 'boolean' ? (
+                  <BooleanRow value={typeof v === 'boolean' ? v : undefined} onChange={(b) => setAnswer(q.id, b)} />
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 6 }}>
+          <button
+            type="button"
+            onClick={onBack}
+            disabled={step === 0 || submitting}
+            style={{
+              padding: '12px 14px',
+              borderRadius: 14,
+              border: '1px solid rgba(148,163,184,0.35)',
+              background: 'rgba(255,255,255,0.03)',
+              color: '#E2E8F0',
+              fontWeight: 900,
+              cursor: step === 0 ? 'not-allowed' : 'pointer',
+              opacity: step === 0 ? 0.5 : 1,
+              minWidth: 120,
+            }}
+          >
+            Back
+          </button>
+
+          {step < totalSteps - 1 ? (
+            <button
+              type="button"
+              onClick={onNext}
+              disabled={!canNext || submitting}
+              style={{
+                padding: '12px 14px',
+                borderRadius: 14,
+                border: '0',
+                background: canNext ? 'linear-gradient(90deg,#00E5FF,#FF4FD8)' : 'rgba(148,163,184,0.25)',
+                color: '#0B1020',
+                fontWeight: 900,
+                cursor: canNext ? 'pointer' : 'not-allowed',
+                minWidth: 160,
+              }}
             >
               Next
             </button>
