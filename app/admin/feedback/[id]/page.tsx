@@ -62,6 +62,8 @@ function chip(text: string) {
         color: '#E2E8F0',
         fontWeight: 800,
         fontSize: 12,
+        maxWidth: '100%',
+        overflowWrap: 'anywhere',
       }}
     >
       {text}
@@ -77,10 +79,10 @@ export default function AdminFeedbackDetailPage({ params }: { params: { id: stri
 
   // Hooks must run on every render (even while loading), otherwise React will throw (#310).
   const metaById = useMemo(() => {
-    const m = new Map<string, { sectionId: string; sectionTitle: string; q: Question }>();
+    const m = new Map<string, { sectionTitle: string; q: Question }>();
     for (const sec of surveySections) {
       for (const q of sec.questions) {
-        m.set(q.id, { sectionId: sec.id, sectionTitle: sec.title, q });
+        m.set(q.id, { sectionTitle: sec.title, q });
       }
     }
 
@@ -125,9 +127,7 @@ export default function AdminFeedbackDetailPage({ params }: { params: { id: stri
 
   const a = (row.answers || {}) as any;
   const tellMoreKey = (qid: string) => `${qid}_tell_more`;
-
   const internalKeys = new Set(['participant_name', 'participant_email', 'claim_voucher', 'consent', 'follow_up_ok']);
-
   const displayedKeys = new Set<string>();
 
   const highlights = [
@@ -140,137 +140,226 @@ export default function AdminFeedbackDetailPage({ params }: { params: { id: stri
 
   return (
     <div style={{ display: 'grid', gap: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 className="section-title">📝 Feedback #{row.id}</h2>
-        <a className="action-button" href="/admin/feedback">← Back</a>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <h2 className="section-title" style={{ marginBottom: 0 }}>
+          📝 Feedback #{row.id}
+        </h2>
+        <a className="action-button" href="/admin/feedback">
+          ← Back
+        </a>
       </div>
 
-      <div className="stat-card" style={{ display: 'grid', gap: 8 }}>
-        <div style={{ color: '#94A3B8', fontWeight: 800 }}>
-          {fmt(row.created_at)} • survey_key: <span style={{ color: '#E2E8F0' }}>{row.survey_key || '—'}</span> • status:{' '}
-          <span style={{ color: '#E2E8F0' }}>{row.status || '—'}</span>
-        </div>
-        <div style={{ color: '#94A3B8', fontWeight: 800 }}>
-          Name: <span style={{ color: '#E2E8F0' }}>{a.participant_name || '—'}</span> • Email:{' '}
-          <span style={{ color: '#E2E8F0' }}>{a.participant_email || '—'}</span> • Voucher:{' '}
-          <span style={{ color: '#E2E8F0' }}>{a.claim_voucher === true ? 'Yes' : a.claim_voucher === false ? 'No' : '—'}</span>
-        </div>
-      </div>
+      <div className="feedback-grid">
+        <aside className="feedback-sidebar">
+          <div className="feedback-card">
+            <div className="feedback-card-title">Submission</div>
+            <div className="feedback-kv">
+              <div className="feedback-kv-label">Time</div>
+              <div className="feedback-kv-value">{fmt(row.created_at)}</div>
 
-      {/* Friendly report */}
-      <div className="stat-card" style={{ display: 'grid', gap: 12 }}>
-        <div style={{ fontWeight: 900, color: '#E2E8F0' }}>Highlights</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-          {highlights.map((h) => {
-            const val = !isEmptyValue(a[h.key]) ? a[h.key] : h.fallback ? a[h.fallback] : undefined;
-            if (isEmptyValue(val)) return null;
-            displayedKeys.add(h.key);
-            if (h.fallback) displayedKeys.add(h.fallback);
-            const p = prettyValue(h.type, val);
-            const tm = a[tellMoreKey(h.key)] || (h.fallback ? a[tellMoreKey(h.fallback)] : '');
-            return (
-              <div key={h.key} style={{ display: 'grid', gap: 6, minWidth: 220 }}>
-                <div style={{ color: '#94A3B8', fontWeight: 800 }}>{h.label}</div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  {chip(p.primary + (p.secondary || ''))}
-                  {typeof tm === 'string' && tm.trim() ? (
-                    <span style={{ color: '#E2E8F0', fontWeight: 800, fontSize: 13 }}>— {tm.trim()}</span>
-                  ) : null}
-                </div>
+              <div className="feedback-kv-label">Survey</div>
+              <div className="feedback-kv-value">{row.survey_key || '—'}</div>
+
+              <div className="feedback-kv-label">Status</div>
+              <div className="feedback-kv-value">{row.status || '—'}</div>
+
+              <div className="feedback-kv-label">Name</div>
+              <div className="feedback-kv-value">{a.participant_name || '—'}</div>
+
+              <div className="feedback-kv-label">Email</div>
+              <div className="feedback-kv-value" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span>{a.participant_email || '—'}</span>
+                {typeof a.participant_email === 'string' && a.participant_email.trim() ? (
+                  <button
+                    type="button"
+                    className="action-button"
+                    style={{ padding: '8px 12px' }}
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(String(a.participant_email));
+                      } catch {
+                        // ignore
+                      }
+                    }}
+                  >
+                    Copy
+                  </button>
+                ) : null}
               </div>
-            );
-          })}
-        </div>
-      </div>
 
-      <div className="stat-card" style={{ display: 'grid', gap: 14 }}>
-        <div style={{ fontWeight: 900, color: '#E2E8F0' }}>Responses</div>
-        <div style={{ display: 'grid', gap: 14 }}>
+              <div className="feedback-kv-label">Voucher</div>
+              <div className="feedback-kv-value">{a.claim_voucher === true ? 'Yes' : a.claim_voucher === false ? 'No' : '—'}</div>
+            </div>
+          </div>
+
+          <div className="feedback-card">
+            <div className="feedback-card-title">Highlights</div>
+            <div className="feedback-highlights">
+              {highlights.map((h) => {
+                const val = !isEmptyValue(a[h.key]) ? a[h.key] : h.fallback ? a[h.fallback] : undefined;
+                if (isEmptyValue(val)) return null;
+                displayedKeys.add(h.key);
+                if (h.fallback) displayedKeys.add(h.fallback);
+                const p = prettyValue(h.type, val);
+                const tm = a[tellMoreKey(h.key)] || (h.fallback ? a[tellMoreKey(h.fallback)] : '');
+                return (
+                  <div key={h.key} className="feedback-highlight-row">
+                    <div className="feedback-highlight-label">{h.label}</div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                      {chip(p.primary + (p.secondary || ''))}
+                      {typeof tm === 'string' && tm.trim() ? (
+                        <span className="feedback-note" style={{ maxWidth: 260 }}>
+                          {tm.trim()}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="feedback-card">
+            <div className="feedback-card-title">Jump to</div>
+            <div className="feedback-links">
+              {surveySections.map((s) => (
+                <a key={s.id} href={`#sec-${s.id}`} className="feedback-link">
+                  {s.title}
+                </a>
+              ))}
+              <a href="#other-fields" className="feedback-link">
+                Other
+              </a>
+              <a href="#raw-json" className="feedback-link">
+                Raw JSON
+              </a>
+            </div>
+          </div>
+        </aside>
+
+        <main className="feedback-main">
           {surveySections.map((sec) => {
             const items = sec.questions
               .map((q) => {
                 const v = a[q.id];
-                const has = !isEmptyValue(v);
-                const legacyV = has ? undefined : a[q.id]; // noop; keep shape
-                const usedId = has ? q.id : q.id;
-                const tm = a[tellMoreKey(usedId)];
+                const tm = a[tellMoreKey(q.id)];
                 if (isEmptyValue(v) && isEmptyValue(tm)) return null;
-                return { q, v, usedId, tm };
+                return { q, v, tm };
               })
-              .filter(Boolean) as Array<{ q: Question; v: any; usedId: string; tm: any }>;
+              .filter(Boolean) as Array<{ q: Question; v: any; tm: any }>;
 
-            if (items.length === 0) return null;
+            const answeredCount = items.length;
+            const total = sec.questions.length;
+            if (answeredCount === 0) return null;
+
+            const openByDefault = sec.id === 'overall' || sec.id === 'capture';
 
             return (
-              <div key={sec.id} style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12 }}>
-                <div style={{ fontWeight: 900, color: '#E2E8F0', marginBottom: 10 }}>{sec.title}</div>
-                <div style={{ display: 'grid', gap: 10 }}>
-                  {items.map(({ q, v, tm }) => {
-                    displayedKeys.add(q.id);
-                    if (!isEmptyValue(tm)) displayedKeys.add(tellMoreKey(q.id));
-                    const pv = prettyValue(q.type, v);
-                    return (
-                      <div key={q.id} style={{ display: 'grid', gap: 6 }}>
-                        <div style={{ color: '#94A3B8', fontWeight: 800 }}>{q.prompt}</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 10 }}>
-                          {chip(pv.primary + (pv.secondary || ''))}
-                          {typeof tm === 'string' && tm.trim() ? (
-                            <div style={{ color: '#E2E8F0', fontWeight: 800, fontSize: 13 }}>{tm.trim()}</div>
-                          ) : null}
-                        </div>
-                      </div>
-                    );
-                  })}
+              <details key={sec.id} id={`sec-${sec.id}`} className="feedback-section" open={openByDefault}>
+                <summary>
+                  <span>{sec.title}</span>
+                  <span className="feedback-section-meta">
+                    {answeredCount} / {total}
+                  </span>
+                </summary>
+                <div className="feedback-section-body">
+                  <table className="admin-table feedback-table" style={{ width: '100%', borderCollapse: 'collapse', color: '#E2E8F0' }}>
+                    <thead>
+                      <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                        <th style={{ padding: 12, width: '44%' }}>Question</th>
+                        <th style={{ padding: 12, width: '26%' }}>Answer</th>
+                        <th style={{ padding: 12, width: '30%' }}>Tell us more</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map(({ q, v, tm }) => {
+                        displayedKeys.add(q.id);
+                        if (!isEmptyValue(tm)) displayedKeys.add(tellMoreKey(q.id));
+                        const pv = prettyValue(q.type, v);
+                        return (
+                          <tr key={q.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <td style={{ padding: 12 }}>
+                              <div className="feedback-q">{q.prompt}</div>
+                            </td>
+                            <td style={{ padding: 12 }}>
+                              {isEmptyValue(v) ? <span className="feedback-note">—</span> : chip(pv.primary + (pv.secondary || ''))}
+                            </td>
+                            <td style={{ padding: 12 }}>
+                              {typeof tm === 'string' && tm.trim() ? <div className="feedback-note">{tm.trim()}</div> : <span className="feedback-note">—</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
+              </details>
             );
           })}
-        </div>
-      </div>
 
-      {/* Unmapped / legacy keys */}
-      <div className="stat-card" style={{ display: 'grid', gap: 10 }}>
-        <div style={{ fontWeight: 900, color: '#E2E8F0' }}>Other fields</div>
-        <div style={{ color: '#94A3B8', fontWeight: 800 }}>
-          These are keys we couldn’t confidently map to the current survey definition (often from older versions).
-        </div>
-        <div style={{ display: 'grid', gap: 8 }}>
-          {Object.keys(a || {})
-            .sort()
-            .filter((k) => !internalKeys.has(k))
-            .filter((k) => !displayedKeys.has(k))
-            .map((k) => {
-              const meta = metaById.get(k);
-              const label = meta?.q?.prompt ? `${meta.sectionTitle} · ${meta.q.prompt}` : k.replace(/_/g, ' ');
-              const type = meta?.q?.type || ('unknown' as const);
-              const pv = prettyValue(type as any, a[k]);
-              return (
-                <div key={k} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' }}>
-                  <span style={{ color: '#94A3B8', fontWeight: 900 }}>{label}:</span>
-                  {chip(pv.primary + (pv.secondary || ''))}
-                </div>
-              );
-            })}
-        </div>
-      </div>
+          <details id="other-fields" className="feedback-section">
+            <summary>
+              <span>Other fields</span>
+              <span className="feedback-section-meta">legacy/unmapped</span>
+            </summary>
+            <div className="feedback-section-body">
+              <div className="feedback-note" style={{ marginBottom: 10 }}>
+                Keys we couldn’t confidently map to the current survey definition (often from older versions).
+              </div>
+              <table className="admin-table feedback-table" style={{ width: '100%', borderCollapse: 'collapse', color: '#E2E8F0' }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    <th style={{ padding: 12, width: '44%' }}>Field</th>
+                    <th style={{ padding: 12, width: '56%' }}>Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.keys(a || {})
+                    .sort()
+                    .filter((k) => !internalKeys.has(k))
+                    .filter((k) => !displayedKeys.has(k))
+                    .map((k) => {
+                      const meta = metaById.get(k);
+                      const label = meta?.q?.prompt ? `${meta.sectionTitle} · ${meta.q.prompt}` : k.replace(/_/g, ' ');
+                      const type = meta?.q?.type || ('unknown' as const);
+                      const pv = prettyValue(type as any, a[k]);
+                      return (
+                        <tr key={k} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <td style={{ padding: 12 }}>
+                            <div className="feedback-q">{label}</div>
+                          </td>
+                          <td style={{ padding: 12 }}>{chip(pv.primary + (pv.secondary || ''))}</td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          </details>
 
-      {/* Raw JSON for debugging */}
-      <div className="stat-card" style={{ display: 'grid', gap: 12 }}>
-        <details>
-          <summary style={{ cursor: 'pointer', fontWeight: 900, color: '#E2E8F0' }}>Raw JSON (answers)</summary>
-          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#E2E8F0', marginTop: 10 }}>
-            {JSON.stringify(row.answers || {}, null, 2)}
-          </pre>
-        </details>
-      </div>
-
-      <div className="stat-card" style={{ display: 'grid', gap: 12 }}>
-        <details>
-          <summary style={{ cursor: 'pointer', fontWeight: 900, color: '#E2E8F0' }}>Raw JSON (meta)</summary>
-          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#E2E8F0', marginTop: 10 }}>
-            {JSON.stringify(row.meta || {}, null, 2)}
-          </pre>
-        </details>
+          <details id="raw-json" className="feedback-section">
+            <summary>
+              <span>Raw JSON</span>
+              <span className="feedback-section-meta">debug</span>
+            </summary>
+            <div className="feedback-section-body">
+              <div style={{ display: 'grid', gap: 12 }}>
+                <details>
+                  <summary style={{ cursor: 'pointer', fontWeight: 900, color: '#E2E8F0' }}>answers</summary>
+                  <pre style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#E2E8F0', marginTop: 10 }}>
+                    {JSON.stringify(row.answers || {}, null, 2)}
+                  </pre>
+                </details>
+                <details>
+                  <summary style={{ cursor: 'pointer', fontWeight: 900, color: '#E2E8F0' }}>meta</summary>
+                  <pre style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#E2E8F0', marginTop: 10 }}>
+                    {JSON.stringify(row.meta || {}, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            </div>
+          </details>
+        </main>
       </div>
     </div>
   );
