@@ -23,7 +23,6 @@ export default function WaitlistPage() {
   const [dryRun, setDryRun] = useState(true);
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<any>(null);
-  const [sendLog, setSendLog] = useState<string>('');
 
   const fetchRows = async (nextOffset = 0) => {
     setLoading(true);
@@ -49,53 +48,6 @@ export default function WaitlistPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const appendLog = (line: string) => {
-    const ts = new Date().toLocaleTimeString();
-    setSendLog((p) => `${p}${p ? '\n' : ''}[${ts}] ${line}`);
-  };
-
-  const sendPreview = async () => {
-    const email = previewTo.trim().toLowerCase();
-    if (!email || !email.includes('@')) {
-      alert('Enter a valid preview email');
-      return;
-    }
-    setSending(true);
-    try {
-      appendLog(`Sending preview to ${email}...`);
-      await adminFetch(`/api/admin/waitlist/send-launch-email`, {
-        method: 'POST',
-        body: JSON.stringify({ mode: 'preview', preview_to: email, subject: launchSubject }),
-      });
-      appendLog(`Preview sent to ${email}.`);
-      alert('Preview sent. Check your inbox.');
-    } catch (e: any) {
-      appendLog(`Preview failed: ${e?.message || e}`);
-      alert(e?.message || 'Preview failed');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const sendBatch = async () => {
-    if (!confirm('Send the launch email to ALL waitlist entries that are currently Notified = No?')) return;
-    setSending(true);
-    try {
-      appendLog('Starting batch send (notified=false)...');
-      const res = await adminFetch<any>(`/api/admin/waitlist/send-launch-email`, {
-        method: 'POST',
-        body: JSON.stringify({ mode: 'batch', limit: 200, subject: launchSubject }),
-      });
-      appendLog(`Batch complete: attempted ${res.attempted}, sent ${res.sent}, failed ${res.failed}.`);
-      await fetchRows(offset);
-      alert(`Batch complete: sent ${res.sent}, failed ${res.failed}.`);
-    } catch (e: any) {
-      appendLog(`Batch failed: ${e?.message || e}`);
-      alert(e?.message || 'Batch failed');
-    } finally {
-      setSending(false);
-    }
-  };
 
   const canPrev = offset > 0;
   const canNext = offset + limit < count;
@@ -170,7 +122,7 @@ export default function WaitlistPage() {
         return;
       }
     } else {
-      if (!confirm(`Send launch email to up to ${Number(sendLimit) || 100} waitlist users where Notified = No?`)) return;
+      if (!confirm(`Send launch email to up to ${Number(sendLimit) || 100} WAITLIST users where Notified = No?`)) return;
     }
 
     setSending(true);
@@ -200,50 +152,6 @@ export default function WaitlistPage() {
   return (
     <div>
       <h2 className="section-title">📧 Waitlist</h2>
-
-      <div className="stat-card" style={{ textAlign: 'left', marginBottom: 18 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline', flexWrap: 'wrap' }}>
-          <div style={{ fontWeight: 900, color: '#E2E8F0' }}>📣 Launch email</div>
-          <div style={{ color: '#94A3B8', fontWeight: 800, fontSize: 12 }}>
-            Includes FL4SH logo + personalized greeting (where available) + “What to Test” attachment.
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
-          <input
-            className="search-input"
-            style={{ maxWidth: 520 }}
-            placeholder="Email subject"
-            value={launchSubject}
-            onChange={(e) => setLaunchSubject(e.target.value)}
-          />
-          <input
-            className="search-input"
-            style={{ maxWidth: 280 }}
-            placeholder="Preview to email@example.com"
-            value={previewTo}
-            onChange={(e) => setPreviewTo(e.target.value)}
-          />
-          <button className="action-button" onClick={sendPreview} disabled={sending}>
-            {sending ? '...' : '✉️ Send preview'}
-          </button>
-          <button
-            className="action-button"
-            onClick={sendBatch}
-            disabled={sending}
-            style={{ borderColor: 'rgba(255,0,110,0.35)', color: '#FF4FD8' }}
-            title="Sends only to waitlist rows where Notified = No"
-          >
-            {sending ? '...' : '🚀 Send to waitlist (notified = No)'}
-          </button>
-        </div>
-
-        {sendLog ? (
-          <pre style={{ marginTop: 12, marginBottom: 0, color: '#94A3B8', whiteSpace: 'pre-wrap', fontSize: 12, fontWeight: 700 }}>
-            {sendLog}
-          </pre>
-        ) : null}
-      </div>
 
       <div className="search-container">
         <input
@@ -285,11 +193,14 @@ export default function WaitlistPage() {
           <input
             className="search-input"
             style={{ maxWidth: 140 }}
-            placeholder="Batch limit"
+            placeholder="Max recipients"
             value={sendLimit}
             onChange={(e) => setSendLimit(e.target.value)}
             inputMode="numeric"
           />
+          <div style={{ color: '#94A3B8', fontWeight: 800, fontSize: 12 }}>
+            Sends only to waitlist users where <b>Notified = No</b>.
+          </div>
           <label style={{ color: '#94A3B8', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
             <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
             Dry run
