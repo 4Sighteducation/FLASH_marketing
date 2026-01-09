@@ -69,7 +69,9 @@ export async function POST(request: NextRequest, ctx: { params: { rowId: string 
         user_id: userId,
         tier: 'pro',
         source: 'waitlist_admin',
-        platform: 'server',
+        // user_subscriptions has a CHECK constraint; 'server' is not an allowed value.
+        // Use 'web' for server-side writes.
+        platform: 'web',
         expires_at: expiresAt,
         updated_at: new Date().toISOString(),
       });
