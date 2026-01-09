@@ -1,0 +1,29 @@
+FL4SH — What to Test (quick checklist)
+
+A) Getting started
+- Onboarding: exam track selection makes sense (GCSE/A-Level + Scottish where relevant)
+- Subject selection: easy to find subjects, search works, nothing missing
+- Topic discovery: topic tree feels right, search relevance is good
+
+B) Flashcards
+- AI generation: quality + exam relevance across MCQ / Short Answer / Essay / Acronym
+- Manual create/edit/delete: reliable saving and editing
+
+C) Study (core loop)
+- Start study session → answer → grade → next card (smooth, no weird jumps)
+- Cards Due / Leitner: due counts update correctly and feel fair
+- Card Bank vs Study Bank: is it clear without explanation?
+
+D) Progress
+- Progress updates after study; weak areas are obvious
+
+E) Pro features (waitlisters should have Pro enabled)
+- Past Papers: open papers/questions/mark schemes (where available)
+- Timed practice: timer behaves, results make sense
+
+F) Account + reliability
+- Sign up / login / password reset works and errors are clear
+- Performance: start-up, resume, navigation speed; any crashes
+
+If something breaks, please share steps + a screenshot. Thank you!
+
