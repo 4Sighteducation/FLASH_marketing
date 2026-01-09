@@ -23,9 +23,6 @@ export default function WaitlistPage() {
   const [dryRun, setDryRun] = useState(true);
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<any>(null);
-  const [launchSubject, setLaunchSubject] = useState('Your FL4SH early access is ready ⚡');
-  const [previewTo, setPreviewTo] = useState('');
-  const [sending, setSending] = useState(false);
   const [sendLog, setSendLog] = useState<string>('');
 
   const fetchRows = async (nextOffset = 0) => {

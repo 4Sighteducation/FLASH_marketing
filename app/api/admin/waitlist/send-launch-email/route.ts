@@ -5,7 +5,8 @@ import { renderWaitlistLaunchEmail, WHAT_TO_TEST_TEXT } from '../../../../../lib
 
 export const runtime = 'nodejs';
 
-const LOGO_URL = 'https://www.fl4sh.cards/assets/assets/flash-logo-transparent.4bcac0acf4ae33723b9013d3f00e8e27.png';
+// Use the primary FL4SH neon logo (note: many email clients hide images until the user allows them).
+const LOGO_URL = 'https://www.fl4shcards.com/flashv2.png';
 const WHAT_TO_TEST_URL = 'https://www.fl4shcards.com/what-to-test.txt';
 
 function toFirstNameFromProfile(profile: any): string | null {

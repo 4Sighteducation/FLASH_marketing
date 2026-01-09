@@ -155,10 +155,7 @@ export function renderWaitlistLaunchEmail(params: { name?: string | null }) {
             <tr>
               <td style="padding:12px 8px 0 8px;">
                 <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:#cbd5e1; font-weight:800; font-size:14px; line-height:1.6;">
-                  We’ve attached a simple <b>“What to Test”</b> checklist. If attachments don’t show, use this link:
-                  <a href="${WHAT_TO_TEST_URL}" style="color:#00F5FF; font-weight:900; text-decoration:none;">What to Test</a>.
-                  <br/>
-                  If anything feels off, just reply with a screenshot.
+                  We’ve attached a simple <b>“What to Test”</b> checklist. If anything feels off, just reply with a screenshot.
                 </div>
               </td>
             </tr>
