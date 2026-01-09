@@ -204,6 +204,9 @@ export default function AdminDashboard() {
         <a href="/admin/users" className="action-button">
           👥 Manage Users
         </a>
+        <a href="/admin/feedback" className="action-button">
+          📝 View Feedback
+        </a>
         <a href="/admin/waitlist" className="action-button">
           📧 View Waitlist
         </a>

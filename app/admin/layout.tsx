@@ -101,6 +101,7 @@ export default function AdminLayout({
           <a href="/admin" className="nav-link">Dashboard</a>
           <a href="/admin/curriculum" className="nav-link">Curriculum</a>
           <a href="/admin/users" className="nav-link">Users</a>
+          <a href="/admin/feedback" className="nav-link">Feedback</a>
           <a href="/admin/waitlist" className="nav-link">Waitlist</a>
           <a href="/admin/codes" className="nav-link">Codes</a>
           <a href="/admin/test-tools" className="nav-link">Ops Tools</a>

@@ -594,8 +594,8 @@ export default function TesterFeedbackPage() {
                       onChange={(x) => setAnswer(q.id, x)}
                     />
 
-                    {/* Optional follow-up details for key “pick one” questions */}
-                    {q.id === 'overall_change_first_pick' && typeof v === 'string' && v.length > 0 && v !== 'Other' ? (
+                    {/* Optional follow-up details for all “pick one” questions */}
+                    {typeof v === 'string' && v.length > 0 ? (
                       <div style={{ marginTop: 12 }}>
                         <div style={{ fontWeight: 900, color: '#E2E8F0' }}>
                           Tell us more about “{v}” (optional)
@@ -635,9 +635,66 @@ export default function TesterFeedbackPage() {
                         Selected {(Array.isArray(v) ? v.length : 0)} / {q.maxSelected}
                       </div>
                     ) : null}
+
+                    {/* Optional follow-up details for all multi-select questions */}
+                    {Array.isArray(v) && v.length > 0 ? (
+                      <div style={{ marginTop: 12 }}>
+                        <div style={{ fontWeight: 900, color: '#E2E8F0' }}>Tell us more (optional)</div>
+                        <div style={{ marginTop: 8, color: '#94A3B8', fontWeight: 700 }}>
+                          Selected: {v.join(', ')}
+                        </div>
+                        <div style={{ marginTop: 8 }}>
+                          <textarea
+                            value={typeof answers[getDetailsKey(q.id)] === 'string' ? answers[getDetailsKey(q.id)] : ''}
+                            onChange={(e) => setAnswer(getDetailsKey(q.id), e.target.value)}
+                            placeholder="Anything specific about your selections…"
+                            style={{
+                              width: '100%',
+                              minHeight: 90,
+                              borderRadius: 14,
+                              border: '1px solid rgba(148,163,184,0.35)',
+                              background: 'rgba(255,255,255,0.03)',
+                              color: '#fff',
+                              padding: 12,
+                              fontWeight: 700,
+                              outline: 'none',
+                              resize: 'vertical',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
                   </>
                 ) : q.type === 'boolean' ? (
-                  <BooleanRow value={typeof v === 'boolean' ? v : undefined} onChange={(b) => setAnswer(q.id, b)} />
+                  <>
+                    <BooleanRow value={typeof v === 'boolean' ? v : undefined} onChange={(b) => setAnswer(q.id, b)} />
+
+                    {/* Optional follow-up details for Yes/No */}
+                    {typeof v === 'boolean' ? (
+                      <div style={{ marginTop: 12 }}>
+                        <div style={{ fontWeight: 900, color: '#E2E8F0' }}>Tell us more (optional)</div>
+                        <div style={{ marginTop: 8 }}>
+                          <textarea
+                            value={typeof answers[getDetailsKey(q.id)] === 'string' ? answers[getDetailsKey(q.id)] : ''}
+                            onChange={(e) => setAnswer(getDetailsKey(q.id), e.target.value)}
+                            placeholder="Optional context…"
+                            style={{
+                              width: '100%',
+                              minHeight: 90,
+                              borderRadius: 14,
+                              border: '1px solid rgba(148,163,184,0.35)',
+                              background: 'rgba(255,255,255,0.03)',
+                              color: '#fff',
+                              padding: 12,
+                              fontWeight: 700,
+                              outline: 'none',
+                              resize: 'vertical',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+                  </>
                 ) : null}
               </div>
             </div>
