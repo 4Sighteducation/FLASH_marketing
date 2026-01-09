@@ -16,8 +16,8 @@ type Section = { id: string; title: string; description?: string; questions: Que
 
 const SURVEY_KEY = 'tester_feedback_v1';
 
-// This is intentionally short enough to complete, but still “comprehensive” across the key app journeys.
-// Everything here is required to qualify as “completed in full” for the voucher.
+// Short enough to complete, but covers the core app journeys.
+// Everything is required to qualify as “completed in full” for the voucher.
 const sections: Section[] = [
   {
     id: 'capture',
@@ -111,8 +111,20 @@ const sections: Section[] = [
     id: 'wrap',
     title: 'Finish',
     questions: [
-      { id: 'overall_satisfaction_1_10', type: 'single_choice', prompt: 'Overall satisfaction (1–10)', required: true, options: ['1','2','3','4','5','6','7','8','9','10'] },
-      { id: 'nps_0_10', type: 'single_choice', prompt: 'Likelihood to recommend (0–10)', required: true, options: ['0','1','2','3','4','5','6','7','8','9','10'] },
+      {
+        id: 'overall_satisfaction_1_10',
+        type: 'single_choice',
+        prompt: 'Overall satisfaction (1–10)',
+        required: true,
+        options: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+      },
+      {
+        id: 'nps_0_10',
+        type: 'single_choice',
+        prompt: 'Likelihood to recommend (0–10)',
+        required: true,
+        options: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+      },
       { id: 'top_3_improvements', type: 'text', prompt: 'Top 3 improvements (ranked)', required: true },
     ],
   },
@@ -146,6 +158,8 @@ function Rating1to7({ value, onChange }: { value?: number; onChange: (v: number)
         gap: 10,
         width: '100%',
         maxWidth: 520,
+        marginLeft: 'auto',
+        marginRight: 'auto',
         marginTop: 8,
       }}
     >
@@ -304,7 +318,8 @@ export default function TesterFeedbackPage() {
   const stepMissing = useMemo(() => {
     const missing: string[] = [];
     for (const q of current.questions) {
-      const voucherEmailMissing = q.id === 'participant_email' && answers.claim_voucher === true && !looksLikeEmail(answers.participant_email || '');
+      const voucherEmailMissing =
+        q.id === 'participant_email' && answers.claim_voucher === true && !looksLikeEmail(answers.participant_email || '');
       if (voucherEmailMissing) missing.push(q.id);
       else if (isMissingRequired(q, answers)) missing.push(q.id);
     }
@@ -313,13 +328,26 @@ export default function TesterFeedbackPage() {
 
   const canNext = stepMissing.size === 0;
 
+  const scrollToFirstMissing = () => {
+    const first = Array.from(stepMissing)[0];
+    if (!first) return;
+    const el = document.getElementById(`q-${first}`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
   const onNext = () => {
-    if (!canNext) return;
+    if (!canNext) {
+      setError('Please complete the highlighted fields to continue.');
+      scrollToFirstMissing();
+      return;
+    }
+    setError(null);
     setStep((s) => Math.min(totalSteps - 1, s + 1));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const onBack = () => {
+    setError(null);
     setStep((s) => Math.max(0, s - 1));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -328,7 +356,8 @@ export default function TesterFeedbackPage() {
     // Enforce "complete in full": every required question must be answered.
     for (const sec of sections) {
       for (const q of sec.questions) {
-        const voucherEmailMissing = q.id === 'participant_email' && answers.claim_voucher === true && !looksLikeEmail(answers.participant_email || '');
+        const voucherEmailMissing =
+          q.id === 'participant_email' && answers.claim_voucher === true && !looksLikeEmail(answers.participant_email || '');
         if (voucherEmailMissing || isMissingRequired(q, answers)) {
           setError('Please complete all questions before submitting (voucher requires full completion).');
           return;
@@ -365,6 +394,40 @@ export default function TesterFeedbackPage() {
     padding: 16,
   };
 
+  const renderTextControl = (q: Question, v: any) => {
+    const isSingleLine = q.id === 'participant_name' || q.id === 'participant_email';
+    const commonStyle: React.CSSProperties = {
+      width: '100%',
+      borderRadius: 14,
+      border: '1px solid rgba(148,163,184,0.35)',
+      background: 'rgba(255,255,255,0.03)',
+      color: '#fff',
+      padding: 12,
+      fontWeight: 700,
+      outline: 'none',
+    };
+
+    if (isSingleLine) {
+      return (
+        <input
+          value={typeof v === 'string' ? v : ''}
+          onChange={(e) => setAnswer(q.id, e.target.value)}
+          placeholder={q.id === 'participant_email' ? 'name@example.com' : 'Type here…'}
+          style={{ ...commonStyle, height: 46 }}
+        />
+      );
+    }
+
+    return (
+      <textarea
+        value={typeof v === 'string' ? v : ''}
+        onChange={(e) => setAnswer(q.id, e.target.value)}
+        placeholder="Type your answer…"
+        style={{ ...commonStyle, minHeight: 90, resize: 'vertical' as any }}
+      />
+    );
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: '#0a0f1e', padding: 18, color: '#fff' }}>
       <Modal
@@ -373,9 +436,7 @@ export default function TesterFeedbackPage() {
         onClose={() => setSuccess(null)}
         body={
           <div style={{ display: 'grid', gap: 10 }}>
-            <p style={{ margin: 0, color: '#E2E8F0', fontWeight: 800 }}>
-              Your response has been submitted successfully.
-            </p>
+            <p style={{ margin: 0, color: '#E2E8F0', fontWeight: 800 }}>Your response has been submitted successfully.</p>
             <p style={{ margin: 0, color: '#94A3B8', fontWeight: 700 }}>
               Reference: <span style={{ color: '#00E5FF', fontWeight: 900 }}>#{success?.id}</span>
             </p>
@@ -385,9 +446,7 @@ export default function TesterFeedbackPage() {
                 <span style={{ color: '#00E5FF' }}>{answers.participant_email}</span>.
               </p>
             ) : (
-              <p style={{ margin: 0, color: '#94A3B8', fontWeight: 700 }}>
-                Voucher: not requested.
-              </p>
+              <p style={{ margin: 0, color: '#94A3B8', fontWeight: 700 }}>Voucher: not requested.</p>
             )}
           </div>
         }
@@ -395,7 +454,10 @@ export default function TesterFeedbackPage() {
 
       <div style={{ maxWidth: 860, margin: '0 auto', display: 'grid', gap: 14 }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-          <img src="/costa-coffee-logo.png" alt="Costa Coffee" style={{ height: 42, width: 'auto' }} />
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <img src="/flashv2.png" alt="FLASH" style={{ height: 44, width: 'auto' }} />
+            <img src="/costa-coffee-logo.png" alt="Costa Coffee" style={{ height: 36, width: 'auto' }} />
+          </div>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
               <div style={{ fontWeight: 900 }}>FLASH Tester Feedback</div>
@@ -423,10 +485,18 @@ export default function TesterFeedbackPage() {
         ) : null}
 
         {current.questions.map((q) => {
+          // Only show email when voucher is being claimed (reduces confusion).
+          if (q.id === 'participant_email' && answers.claim_voucher !== true) return null;
+
           const v = answers[q.id];
           const missing = stepMissing.has(q.id);
+
           return (
-            <div key={q.id} style={{ ...cardStyle, borderColor: missing ? 'rgba(255,0,110,0.8)' : 'rgba(255,255,255,0.12)' }}>
+            <div
+              key={q.id}
+              id={`q-${q.id}`}
+              style={{ ...cardStyle, borderColor: missing ? 'rgba(255,0,110,0.8)' : 'rgba(255,255,255,0.12)' }}
+            >
               <div style={{ fontWeight: 900 }}>
                 {q.prompt} {q.required ? <span style={{ color: '#FF4FD8' }}>*</span> : null}
               </div>
@@ -436,23 +506,16 @@ export default function TesterFeedbackPage() {
                 {q.type === 'rating_1_7' ? (
                   <Rating1to7 value={typeof v === 'number' ? v : undefined} onChange={(n) => setAnswer(q.id, n)} />
                 ) : q.type === 'text' ? (
-                  <textarea
-                    value={typeof v === 'string' ? v : ''}
-                    onChange={(e) => setAnswer(q.id, e.target.value)}
-                    placeholder="Type your answer…"
-                    style={{
-                      width: '100%',
-                      minHeight: 90,
-                      borderRadius: 14,
-                      border: '1px solid rgba(148,163,184,0.35)',
-                      background: 'rgba(255,255,255,0.03)',
-                      color: '#fff',
-                      padding: 12,
-                      fontWeight: 700,
-                      outline: 'none',
-                      resize: 'vertical',
-                    }}
-                  />
+                  <>
+                    {renderTextControl(q, v)}
+                    {q.id === 'participant_email' && answers.claim_voucher === true ? (
+                      !looksLikeEmail(answers.participant_email || '') ? (
+                        <div style={{ marginTop: 8, color: '#FF4FD8', fontWeight: 800 }}>
+                          Please enter a valid email address (e.g. name@example.com) to claim the voucher.
+                        </div>
+                      ) : null
+                    ) : null}
+                  </>
                 ) : q.type === 'single_choice' ? (
                   <ChoiceRow options={q.options || []} value={typeof v === 'string' ? v : undefined} onChange={(x) => setAnswer(q.id, x)} />
                 ) : q.type === 'boolean' ? (
@@ -487,7 +550,7 @@ export default function TesterFeedbackPage() {
             <button
               type="button"
               onClick={onNext}
-              disabled={!canNext || submitting}
+              disabled={submitting}
               style={{
                 padding: '12px 14px',
                 borderRadius: 14,
@@ -495,9 +558,10 @@ export default function TesterFeedbackPage() {
                 background: canNext ? 'linear-gradient(90deg,#00E5FF,#FF4FD8)' : 'rgba(148,163,184,0.25)',
                 color: '#0B1020',
                 fontWeight: 900,
-                cursor: canNext ? 'pointer' : 'not-allowed',
+                cursor: submitting ? 'not-allowed' : 'pointer',
                 minWidth: 160,
               }}
+              aria-disabled={!canNext}
             >
               Next
             </button>
