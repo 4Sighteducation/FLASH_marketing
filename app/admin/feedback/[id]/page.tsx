@@ -75,29 +75,7 @@ export default function AdminFeedbackDetailPage({ params }: { params: { id: stri
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => {
-    const run = async () => {
-      setLoading(true);
-      setErr(null);
-      try {
-        const res = await adminFetch<DetailResponse>(`/api/admin/feedback/${encodeURIComponent(id)}`);
-        setRow(res.row);
-      } catch (e: any) {
-        setErr(String(e?.message || e));
-      } finally {
-        setLoading(false);
-      }
-    };
-    run();
-  }, [id]);
-
-  if (loading) return <div className="admin-loading"><div className="spinner"></div><p>Loading…</p></div>;
-  if (err) return <div style={{ color: '#FF4FD8', fontWeight: 900 }}>{err}</div>;
-  if (!row) return <div style={{ color: '#94A3B8' }}>Not found.</div>;
-
-  const a = (row.answers || {}) as any;
-  const tellMoreKey = (qid: string) => `${qid}_tell_more`;
-
+  // Hooks must run on every render (even while loading), otherwise React will throw (#310).
   const metaById = useMemo(() => {
     const m = new Map<string, { sectionId: string; sectionTitle: string; q: Question }>();
     for (const sec of surveySections) {
@@ -124,6 +102,29 @@ export default function AdminFeedbackDetailPage({ params }: { params: { id: stri
 
     return m;
   }, []);
+
+  useEffect(() => {
+    const run = async () => {
+      setLoading(true);
+      setErr(null);
+      try {
+        const res = await adminFetch<DetailResponse>(`/api/admin/feedback/${encodeURIComponent(id)}`);
+        setRow(res.row);
+      } catch (e: any) {
+        setErr(String(e?.message || e));
+      } finally {
+        setLoading(false);
+      }
+    };
+    run();
+  }, [id]);
+
+  if (loading) return <div className="admin-loading"><div className="spinner"></div><p>Loading…</p></div>;
+  if (err) return <div style={{ color: '#FF4FD8', fontWeight: 900 }}>{err}</div>;
+  if (!row) return <div style={{ color: '#94A3B8' }}>Not found.</div>;
+
+  const a = (row.answers || {}) as any;
+  const tellMoreKey = (qid: string) => `${qid}_tell_more`;
 
   const internalKeys = new Set(['participant_name', 'participant_email', 'claim_voucher', 'consent', 'follow_up_ok']);
 
