@@ -3,7 +3,6 @@
 
 import React, { useMemo, useState } from 'react';
 
-import React, { useMemo, useState } from 'react';
 import { SURVEY_KEY, sections, type Question, type QuestionType, type Section } from '../../lib/surveys/testerFeedbackV1';
 
 type Answers = Record<string, any>;
