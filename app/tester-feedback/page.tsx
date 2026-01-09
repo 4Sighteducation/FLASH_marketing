@@ -395,6 +395,7 @@ export default function TesterFeedbackPage() {
   const progress = Math.round(((step + 1) / totalSteps) * 100);
 
   const setAnswer = (id: string, value: any) => setAnswers((p) => ({ ...p, [id]: value }));
+  const getDetailsKey = (questionId: string) => `${questionId}_tell_more`;
 
   const stepMissing = useMemo(() => {
     const missing: string[] = [];
@@ -586,7 +587,41 @@ export default function TesterFeedbackPage() {
                     />
                   )
                 ) : q.type === 'single_choice' ? (
-                  <ChoiceRow options={q.options || []} value={typeof v === 'string' ? v : undefined} onChange={(x) => setAnswer(q.id, x)} />
+                  <>
+                    <ChoiceRow
+                      options={q.options || []}
+                      value={typeof v === 'string' ? v : undefined}
+                      onChange={(x) => setAnswer(q.id, x)}
+                    />
+
+                    {/* Optional follow-up details for key “pick one” questions */}
+                    {q.id === 'overall_change_first_pick' && typeof v === 'string' && v.length > 0 && v !== 'Other' ? (
+                      <div style={{ marginTop: 12 }}>
+                        <div style={{ fontWeight: 900, color: '#E2E8F0' }}>
+                          Tell us more about “{v}” (optional)
+                        </div>
+                        <div style={{ marginTop: 8 }}>
+                          <textarea
+                            value={typeof answers[getDetailsKey(q.id)] === 'string' ? answers[getDetailsKey(q.id)] : ''}
+                            onChange={(e) => setAnswer(getDetailsKey(q.id), e.target.value)}
+                            placeholder="A quick example or what you mean…"
+                            style={{
+                              width: '100%',
+                              minHeight: 90,
+                              borderRadius: 14,
+                              border: '1px solid rgba(148,163,184,0.35)',
+                              background: 'rgba(255,255,255,0.03)',
+                              color: '#fff',
+                              padding: 12,
+                              fontWeight: 700,
+                              outline: 'none',
+                              resize: 'vertical',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+                  </>
                 ) : q.type === 'multi_choice' ? (
                   <>
                     <MultiChoiceRow
