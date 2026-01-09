@@ -1,6 +1,7 @@
 const IOS_APP_STORE_URL = 'https://apps.apple.com/in/app/fl4sh-study-smarter/id6747457678';
 const ANDROID_BETA_URL = 'https://www.fl4shcards.com/android-beta-testers/';
-const LOGO_URL = 'https://www.fl4shcards.com/flashv2.png';
+const LOGO_URL = 'https://www.fl4sh.cards/assets/assets/flash-logo-transparent.4bcac0acf4ae33723b9013d3f00e8e27.png';
+const WHAT_TO_TEST_URL = 'https://www.fl4shcards.com/what-to-test.txt';
 
 export const WHAT_TO_TEST_TEXT = `FL4SH — What to Test (quick checklist)
 
@@ -80,8 +81,8 @@ export function renderWaitlistLaunchEmail(params: { name?: string | null }) {
           <table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" style="width:100%; max-width:640px;">
 
             <tr>
-              <td style="padding:10px 8px 0 8px;">
-                <img src="${LOGO_URL}" width="56" height="56" alt="FL4SH" style="display:block; border:0; outline:none; text-decoration:none;" />
+              <td align="center" style="padding:18px 8px 0 8px;">
+                <img src="${LOGO_URL}" width="110" alt="FL4SH" style="display:block; border:0; outline:none; text-decoration:none; width:110px; height:auto; margin:0 auto;" />
               </td>
             </tr>
 
@@ -154,7 +155,10 @@ export function renderWaitlistLaunchEmail(params: { name?: string | null }) {
             <tr>
               <td style="padding:12px 8px 0 8px;">
                 <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:#cbd5e1; font-weight:800; font-size:14px; line-height:1.6;">
-                  We’ve attached a simple <b>“What to Test”</b> checklist. If anything feels off, just reply with a screenshot.
+                  We’ve attached a simple <b>“What to Test”</b> checklist. If attachments don’t show, use this link:
+                  <a href="${WHAT_TO_TEST_URL}" style="color:#00F5FF; font-weight:900; text-decoration:none;">What to Test</a>.
+                  <br/>
+                  If anything feels off, just reply with a screenshot.
                 </div>
               </td>
             </tr>

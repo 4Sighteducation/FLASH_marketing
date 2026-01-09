@@ -5,6 +5,9 @@ import { renderWaitlistLaunchEmail, WHAT_TO_TEST_TEXT } from '../../../../../lib
 
 export const runtime = 'nodejs';
 
+const LOGO_URL = 'https://www.fl4sh.cards/assets/assets/flash-logo-transparent.4bcac0acf4ae33723b9013d3f00e8e27.png';
+const WHAT_TO_TEST_URL = 'https://www.fl4shcards.com/what-to-test.txt';
+
 function toFirstNameFromProfile(profile: any): string | null {
   const s = String(profile?.username || profile?.name || profile?.full_name || '').trim();
   if (!s) return null;
@@ -57,6 +60,8 @@ export async function POST(request: NextRequest) {
               ios_app_store_url: 'https://apps.apple.com/in/app/fl4sh-study-smarter/id6747457678',
               android_beta_url: 'https://www.fl4shcards.com/android-beta-testers/',
               pro_enabled: true,
+              logo_url: LOGO_URL,
+              what_to_test_url: WHAT_TO_TEST_URL,
             },
             fromEmail,
             fromName,
@@ -116,6 +121,8 @@ export async function POST(request: NextRequest) {
                 ios_app_store_url: 'https://apps.apple.com/in/app/fl4sh-study-smarter/id6747457678',
                 android_beta_url: 'https://www.fl4shcards.com/android-beta-testers/',
                 pro_enabled: true,
+                logo_url: LOGO_URL,
+                what_to_test_url: WHAT_TO_TEST_URL,
               },
               fromEmail,
               fromName,
