@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient, parseBearerToken, requireAdminFromBearerToken } from '../../../../../lib/server/adminApi';
-import { sendSendGridEmail } from '../../../../../lib/server/sendgrid';
+import { sendSendGridEmail, sendSendGridTemplateEmail } from '../../../../../lib/server/sendgrid';
 import { renderWaitlistLaunchEmail, WHAT_TO_TEST_TEXT } from '../../../../../lib/emails/waitlistLaunchEmail';
+
+export const runtime = 'nodejs';
 
 function toFirstNameFromProfile(profile: any): string | null {
   const s = String(profile?.username || profile?.name || profile?.full_name || '').trim();
@@ -36,6 +38,7 @@ export async function POST(request: NextRequest) {
     const subject = String(body?.subject || 'Your FL4SH early access is ready ⚡').trim().slice(0, 120);
     const fromEmail = process.env.SENDGRID_FROM_EMAIL || 'hello@fl4shcards.com';
     const fromName = 'FL4SH';
+    const templateId = String(process.env.SENDGRID_WAITLIST_TEMPLATE || '').trim();
 
     const supabase = getServiceClient();
 
@@ -43,16 +46,33 @@ export async function POST(request: NextRequest) {
       if (!previewTo || !previewTo.includes('@')) {
         return NextResponse.json({ error: 'preview_to (valid email) is required' }, { status: 400 });
       }
-      const html = renderWaitlistLaunchEmail({ name: 'Tony' });
       if (!dryRun) {
-        await sendSendGridEmail({
-          to: previewTo,
-          subject: `[PREVIEW] ${subject}`,
-          html,
-          fromEmail,
-          fromName,
-          attachments: [attachmentForWhatToTest()],
-        });
+        if (templateId) {
+          await sendSendGridTemplateEmail({
+            to: previewTo,
+            subject: `[PREVIEW] ${subject}`,
+            templateId,
+            dynamicTemplateData: {
+              first_name: 'Tony',
+              ios_app_store_url: 'https://apps.apple.com/in/app/fl4sh-study-smarter/id6747457678',
+              android_beta_url: 'https://www.fl4shcards.com/android-beta-testers/',
+              pro_enabled: true,
+            },
+            fromEmail,
+            fromName,
+            attachments: [attachmentForWhatToTest()],
+          });
+        } else {
+          const html = renderWaitlistLaunchEmail({ name: 'Tony' });
+          await sendSendGridEmail({
+            to: previewTo,
+            subject: `[PREVIEW] ${subject}`,
+            html,
+            fromEmail,
+            fromName,
+            attachments: [attachmentForWhatToTest()],
+          });
+        }
       }
       return NextResponse.json({ ok: true, mode: 'preview', dryRun });
     }
@@ -84,18 +104,34 @@ export async function POST(request: NextRequest) {
       const email = String(r.email).toLowerCase();
       const profile = byEmail.get(email);
       const firstName = toFirstNameFromProfile(profile);
-      const html = renderWaitlistLaunchEmail({ name: firstName || null });
-
       try {
         if (!dryRun) {
-          await sendSendGridEmail({
-            to: email,
-            subject,
-            html,
-            fromEmail,
-            fromName,
-            attachments: [attachmentForWhatToTest()],
-          });
+          if (templateId) {
+            await sendSendGridTemplateEmail({
+              to: email,
+              subject,
+              templateId,
+              dynamicTemplateData: {
+                first_name: firstName || '',
+                ios_app_store_url: 'https://apps.apple.com/in/app/fl4sh-study-smarter/id6747457678',
+                android_beta_url: 'https://www.fl4shcards.com/android-beta-testers/',
+                pro_enabled: true,
+              },
+              fromEmail,
+              fromName,
+              attachments: [attachmentForWhatToTest()],
+            });
+          } else {
+            const html = renderWaitlistLaunchEmail({ name: firstName || null });
+            await sendSendGridEmail({
+              to: email,
+              subject,
+              html,
+              fromEmail,
+              fromName,
+              attachments: [attachmentForWhatToTest()],
+            });
+          }
           if (r.id) {
             await supabase.from('waitlist').update({ notified: true }).eq('id', r.id);
           }

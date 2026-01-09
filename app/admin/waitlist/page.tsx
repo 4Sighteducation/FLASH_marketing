@@ -19,6 +19,12 @@ export default function WaitlistPage() {
   const [newTesterNote, setNewTesterNote] = useState('');
   const [launchSubject, setLaunchSubject] = useState('Your FL4SH early access is ready ⚡');
   const [previewTo, setPreviewTo] = useState('');
+  const [sendLimit, setSendLimit] = useState('100');
+  const [dryRun, setDryRun] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<any>(null);
+  const [launchSubject, setLaunchSubject] = useState('Your FL4SH early access is ready ⚡');
+  const [previewTo, setPreviewTo] = useState('');
   const [sending, setSending] = useState(false);
   const [sendLog, setSendLog] = useState<string>('');
 
@@ -157,6 +163,43 @@ export default function WaitlistPage() {
     }
   };
 
+  const sendLaunchEmail = async (mode: 'preview' | 'batch') => {
+    if (sending) return;
+
+    if (mode === 'preview') {
+      const email = previewTo.trim().toLowerCase();
+      if (!email || !email.includes('@')) {
+        alert('Enter a valid preview email address');
+        return;
+      }
+    } else {
+      if (!confirm(`Send launch email to up to ${Number(sendLimit) || 100} waitlist users where Notified = No?`)) return;
+    }
+
+    setSending(true);
+    setSendResult(null);
+    try {
+      const res = await adminFetch<any>('/api/admin/waitlist/send-launch-email', {
+        method: 'POST',
+        body: JSON.stringify({
+          mode,
+          preview_to: previewTo.trim(),
+          subject: launchSubject.trim(),
+          limit: Number(sendLimit) || 100,
+          dry_run: dryRun === true,
+        }),
+      });
+      setSendResult(res);
+      if (mode === 'batch' && !dryRun) {
+        await fetchRows(0);
+      }
+    } catch (e: any) {
+      alert(e?.message || 'Failed to send');
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <div>
       <h2 className="section-title">📧 Waitlist</h2>
@@ -220,6 +263,67 @@ export default function WaitlistPage() {
 
       <div style={{ color: '#94A3B8', fontSize: '14px', marginBottom: '16px' }}>
         {count} total • showing {rows.length} • offset {offset}
+      </div>
+
+      <div className="stat-card" style={{ textAlign: 'left', marginBottom: 16 }}>
+        <div style={{ fontWeight: 900, color: '#E2E8F0', fontSize: 16, marginBottom: 10 }}>🚀 Launch email</div>
+        <div style={{ color: '#94A3B8', fontWeight: 800, fontSize: 13, marginBottom: 10 }}>
+          Uses SendGrid template <code style={{ color: '#E2E8F0' }}>SENDGRID_WAITLIST_TEMPLATE</code> and attaches “What to Test”.
+        </div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            className="search-input"
+            style={{ maxWidth: 420 }}
+            placeholder="Subject"
+            value={launchSubject}
+            onChange={(e) => setLaunchSubject(e.target.value)}
+          />
+          <input
+            className="search-input"
+            style={{ maxWidth: 280 }}
+            placeholder="Preview to (email)"
+            value={previewTo}
+            onChange={(e) => setPreviewTo(e.target.value)}
+          />
+          <input
+            className="search-input"
+            style={{ maxWidth: 140 }}
+            placeholder="Batch limit"
+            value={sendLimit}
+            onChange={(e) => setSendLimit(e.target.value)}
+            inputMode="numeric"
+          />
+          <label style={{ color: '#94A3B8', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
+            Dry run
+          </label>
+          <button className="action-button" disabled={sending} onClick={() => sendLaunchEmail('preview')}>
+            {sending ? '…' : 'Send preview'}
+          </button>
+          <button className="action-button" disabled={sending} onClick={() => sendLaunchEmail('batch')}>
+            {sending ? '…' : 'Send batch'}
+          </button>
+        </div>
+
+        {sendResult ? (
+          <div style={{ marginTop: 12, color: '#E2E8F0', fontWeight: 800, fontSize: 13 }}>
+            <div style={{ color: '#94A3B8', marginBottom: 6 }}>
+              Result: mode={String(sendResult.mode)} • dryRun={String(sendResult.dryRun)}
+              {typeof sendResult.sent === 'number' ? ` • sent=${sendResult.sent}` : ''}
+              {typeof sendResult.failed === 'number' ? ` • failed=${sendResult.failed}` : ''}
+              {typeof sendResult.attempted === 'number' ? ` • attempted=${sendResult.attempted}` : ''}
+            </div>
+            {Array.isArray(sendResult.results) ? (
+              <details>
+                <summary style={{ cursor: 'pointer' }}>Details</summary>
+                <pre style={{ margin: '10px 0 0 0', whiteSpace: 'pre-wrap' }}>
+                  {JSON.stringify(sendResult.results.slice(0, 50), null, 2)}
+                </pre>
+                {sendResult.results.length > 50 ? <div style={{ color: '#94A3B8' }}>Showing first 50 results…</div> : null}
+              </details>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
