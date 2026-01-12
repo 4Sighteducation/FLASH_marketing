@@ -7,6 +7,7 @@ import LaunchBanner from './components/LaunchBanner'
 import ComingSoonButton from './components/ComingSoonButton'
 import AndroidBetaPopup from './components/AndroidBetaPopup'
 import StoreBadges from './components/StoreBadges'
+import SchoolWebinarSignup from './components/SchoolWebinarSignup'
 import styles from './page.module.css'
 
 export default function Home() {
@@ -515,6 +516,22 @@ export default function Home() {
               <h3>Can I cancel anytime?</h3>
               <p>Absolutely. No contracts, no commitments. Cancel your subscription anytime with one click. Plus we have a generous free tier to start.</p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Schools webinar CTA */}
+      <section className={styles.finalCta}>
+        <div className={styles.container}>
+          <h2 className={styles.finalCtaTitle}>
+            Schools: book a <span className={styles.gradientText}>free</span> student webinar
+          </h2>
+          <p className={styles.finalCtaText}>
+            Get a free 60-minute “Supercharged Revision” student webinar from VESPA Academy (usually £350) by registering
+            interest in FL4SH.
+          </p>
+          <div style={{ marginTop: '1.75rem' }}>
+            <SchoolWebinarSignup />
           </div>
         </div>
       </section>

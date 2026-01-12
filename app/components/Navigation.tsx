@@ -45,13 +45,14 @@ export default function Navigation() {
             <a href="#subjects">Subjects</a>
             <a href="#how-it-works">How It Works</a>
             <a href="#pricing">Pricing</a>
+            <a href="/schools">Schools</a>
             <a href="/android-beta-testers">Android Beta</a>
           </div>
           
           {/* Desktop CTA */}
           <div className={styles.navCta}>
-            <a href="/contact" className={styles.btnPrimary}>
-              Schools & Bulk Pricing →
+            <a href="/schools" className={styles.btnPrimary}>
+              Free School Webinar →
             </a>
           </div>
 
@@ -74,9 +75,10 @@ export default function Navigation() {
             <a href="#subjects" onClick={closeMenu}>Subjects</a>
             <a href="#how-it-works" onClick={closeMenu}>How It Works</a>
             <a href="#pricing" onClick={closeMenu}>Pricing</a>
+            <a href="/schools" onClick={closeMenu}>Schools</a>
             <a href="/android-beta-testers" onClick={closeMenu}>Android Beta</a>
-            <a href="/contact" className={styles.mobileCta} onClick={closeMenu}>
-              Schools & Bulk Pricing →
+            <a href="/schools" className={styles.mobileCta} onClick={closeMenu}>
+              Free School Webinar →
             </a>
           </div>
         )}
