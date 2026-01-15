@@ -477,6 +477,62 @@
   background: linear-gradient(180deg, #050510 0%, #0A0A1F 100%);
 }
 
+.pricingIntro {
+  text-align: center;
+  color: #94A3B8;
+  font-size: clamp(1.05rem, 1.9vw, 1.25rem);
+  max-width: 740px;
+  margin: 0.75rem auto 0;
+}
+
+.trialGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+  margin-top: 3rem;
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.trialCard {
+  position: relative;
+  text-align: center;
+  padding: 3rem 2rem;
+  overflow: visible;
+}
+
+.trialFeatured {
+  transform: scale(1.05);
+  z-index: 1;
+}
+
+.trialTitle {
+  font-size: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: white;
+}
+
+.trialText {
+  color: #94A3B8;
+  line-height: 1.6;
+  margin: 0 0 1.25rem 0;
+}
+
+.smallNote {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  color: rgba(226, 232, 240, 0.82);
+}
+
+.smallPrint {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: rgba(148, 163, 184, 0.95);
+  line-height: 1.5;
+  text-align: left;
+}
+
 .pricingGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -749,11 +805,11 @@
     transform: scale(1);
   }
   
-  .pricingGrid {
+  .trialGrid {
     grid-template-columns: 1fr;
   }
-  
-  .featured {
+
+  .trialFeatured {
     transform: scale(1);
   }
   

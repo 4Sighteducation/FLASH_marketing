@@ -399,68 +399,84 @@ export default function Home() {
       <section id="pricing" className={styles.pricingSection}>
         <div className={styles.container}>
           <h2 className={styles.sectionTitle}>
-            Start Free, Upgrade <span className={styles.gradientText}>When Ready</span>
+            Your first month is <span className={styles.gradientText}>Pro — free</span>
           </h2>
+          <p className={styles.pricingIntro}>
+            Get full Pro access for 30 days. No credit card required to start.
+          </p>
 
-          <div className={styles.billingToggleWrap}>
-            <div className={styles.billingToggle} role="tablist" aria-label="Billing period">
-              <button
-                type="button"
-                className={`${styles.billingOption} ${billing === 'monthly' ? styles.billingOptionActive : ''}`}
-                onClick={() => setBilling('monthly')}
-                aria-selected={billing === 'monthly'}
-                role="tab"
-              >
-                Monthly
-              </button>
-              <button
-                type="button"
-                className={`${styles.billingOption} ${billing === 'annual' ? styles.billingOptionActive : ''}`}
-                onClick={() => setBilling('annual')}
-                aria-selected={billing === 'annual'}
-                role="tab"
-              >
-                Annual
-              </button>
+          <div className={styles.trialGrid}>
+            {/* Month 1: Pro (free) */}
+            <div className={`${styles.trialCard} ${styles.card} ${styles.cardPink} ${styles.trialFeatured}`}>
+              <div className={styles.badge}>FREE MONTH</div>
+              <h3 className={styles.trialTitle}>Month 1: Pro (free)</h3>
+              <p className={styles.trialText}>
+                Start with full access and see how much progress you can make in 30 days.
+              </p>
+              <ul className={styles.features}>
+                <li>✓ Unlimited subjects & flashcards</li>
+                <li>✓ Past papers & mark schemes</li>
+                <li>✓ AI card generation + voice analysis</li>
+                <li>✓ Advanced analytics</li>
+              </ul>
+              <ComingSoonButton variant="primary" className={styles.btn}>
+                Get Pro free for 30 days
+              </ComingSoonButton>
+              <p className={styles.smallNote}>No credit card required to start.</p>
             </div>
-            <p className={styles.billingHint}>
-              {billing === 'annual' ? 'Best value for year-long courses (2 months free)' : 'Flexible monthly billing'}
-            </p>
-          </div>
-          
-          <div className={styles.pricingGrid}>
-            <div className={`${styles.pricingCard} ${styles.card}`}>
-              <h3>Free</h3>
-              <div className={styles.price}>£0<span>/forever</span></div>
+
+            {/* After: choose a plan */}
+            <div className={`${styles.trialCard} ${styles.card}`}>
+              <div className={styles.badge}>{billing === 'annual' ? '2 MONTHS FREE' : 'KEEP PRO'}</div>
+              <h3 className={styles.trialTitle}>After that: keep studying like a Pro</h3>
+              <p className={styles.trialText}>
+                If FL4SH is helping, keep Pro so you keep everything you’ve built.
+              </p>
+
+              <div className={styles.billingToggleWrap} style={{ marginTop: '0.5rem' }}>
+                <div className={styles.billingToggle} role="tablist" aria-label="Billing period">
+                  <button
+                    type="button"
+                    className={`${styles.billingOption} ${billing === 'monthly' ? styles.billingOptionActive : ''}`}
+                    onClick={() => setBilling('monthly')}
+                    aria-selected={billing === 'monthly'}
+                    role="tab"
+                  >
+                    Monthly
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.billingOption} ${billing === 'annual' ? styles.billingOptionActive : ''}`}
+                    onClick={() => setBilling('annual')}
+                    aria-selected={billing === 'annual'}
+                    role="tab"
+                  >
+                    Annual
+                  </button>
+                </div>
+                <p className={styles.billingHint}>
+                  {billing === 'annual' ? '£39.99/year (2 months free)' : '£3.99/month'}
+                </p>
+              </div>
+            </div>
+
+            {/* Free fallback */}
+            <div className={`${styles.trialCard} ${styles.card}`}>
+              <div className={styles.badge}>FREE TIER</div>
+              <h3 className={styles.trialTitle}>Not ready? Stay on Free</h3>
+              <p className={styles.trialText}>
+                No problem — your account stays active.
+              </p>
               <ul className={styles.features}>
                 <li>✓ 1 subject</li>
                 <li>✓ 10 flashcards</li>
                 <li>✓ Basic study mode</li>
-                <li>✓ Progress tracking</li>
+                <li>✕ No Past Papers</li>
               </ul>
-              <ComingSoonButton variant="secondary" className={styles.btn}>
-                Get Started
-              </ComingSoonButton>
-            </div>
-            
-            <div className={`${styles.pricingCard} ${styles.card} ${styles.cardPink} ${styles.featured}`}>
-              <div className={styles.badge}>{billing === 'annual' ? '2 MONTHS FREE' : 'MOST POPULAR'}</div>
-              <h3>Pro</h3>
-              <div className={styles.price}>{pricing.pro.amount}<span>{pricing.pro.suffix}</span></div>
-              <ul className={styles.features}>
-                <li>✓ Unlimited subjects & flashcards</li>
-                <li>✓ All 10,000+ exam topics</li>
-                <li>✓ AI card generation</li>
-                <li>✓ AI voice analysis</li>
-                <li>✓ Past papers & mark schemes</li>
-                <li>✓ Advanced analytics</li>
-              </ul>
-              <p className={styles.billingHint} style={{ marginTop: '0.75rem' }}>
-                Get Pro free for your first 30 days. No credit card required.
+              <p className={styles.smallPrint}>
+                After your free month ends, if you don’t keep Pro, your cards, subjects and progress from the Pro month will be
+                reset and you’ll move to the Free tier limits.
               </p>
-              <ComingSoonButton variant="primary" className={styles.btn}>
-                Get Pro free for 30 days
-              </ComingSoonButton>
             </div>
           </div>
         </div>
