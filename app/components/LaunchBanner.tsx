@@ -43,7 +43,7 @@ export default function LaunchBanner() {
         <div className={styles.container}>
           <p className={styles.success}>
             🎉 <strong>You're on the list!</strong> Check your email for early access details.
-            {' '}<span className={styles.highlight}>First 20 get Pro FREE for 1 year!</span>
+            {' '}<span className={styles.highlight}>You’ll get Pro free for your first 30 days.</span>
           </p>
         </div>
       </div>
@@ -58,8 +58,7 @@ export default function LaunchBanner() {
             <span className={styles.badge}>🚀 FEB 1ST 2026</span>
             <Countdown />
             <p>
-              Get <strong className={styles.highlight}>Pro FREE for 1 YEAR</strong> - 
-              First 20 early access users only!
+              Get <strong className={styles.highlight}>Pro free for 30 days</strong> — no credit card required.
             </p>
           </div>
           

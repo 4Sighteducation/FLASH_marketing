@@ -16,13 +16,11 @@ export default function Home() {
   const pricing = useMemo(() => {
     if (billing === 'annual') {
       return {
-        premium: { amount: '£29.99', suffix: '/year' },
-        pro: { amount: '£49.99', suffix: '/year' },
+        pro: { amount: '£39.99', suffix: '/year' },
       };
     }
     return {
-      premium: { amount: '£2.99', suffix: '/month' },
-      pro: { amount: '£4.99', suffix: '/month' },
+      pro: { amount: '£3.99', suffix: '/month' },
     };
   }, [billing]);
 
@@ -152,7 +150,7 @@ export default function Home() {
             
             <div className={styles.ctaButtons}>
               <ComingSoonButton variant="primary" className={styles.btn}>
-                ⚡ Start Studying Free
+                ⚡ Get Pro free for 30 days
               </ComingSoonButton>
               <a href="#features" className={`${styles.btn} ${styles.btnSecondary}`}>
                 See How It Works →
@@ -426,7 +424,7 @@ export default function Home() {
               </button>
             </div>
             <p className={styles.billingHint}>
-              {billing === 'annual' ? 'Best value for year-long courses' : 'Flexible monthly billing'}
+              {billing === 'annual' ? 'Best value for year-long courses (2 months free)' : 'Flexible monthly billing'}
             </p>
           </div>
           
@@ -446,33 +444,22 @@ export default function Home() {
             </div>
             
             <div className={`${styles.pricingCard} ${styles.card} ${styles.cardPink} ${styles.featured}`}>
-              <div className={styles.badge}>Most Popular</div>
-              <h3>Premium</h3>
-              <div className={styles.price}>{pricing.premium.amount}<span>{pricing.premium.suffix}</span></div>
-              <ul className={styles.features}>
-                <li>✓ Unlimited subjects</li>
-                <li>✓ Unlimited flashcards</li>
-                <li>✓ All 10,000+ topics</li>
-                <li>✓ Smart revision scheduling</li>
-                <li>✓ Priority support</li>
-              </ul>
-              <ComingSoonButton variant="primary" className={styles.btn}>
-                Start Free Trial
-              </ComingSoonButton>
-            </div>
-            
-            <div className={`${styles.pricingCard} ${styles.card}`}>
+              <div className={styles.badge}>{billing === 'annual' ? '2 MONTHS FREE' : 'MOST POPULAR'}</div>
               <h3>Pro</h3>
               <div className={styles.price}>{pricing.pro.amount}<span>{pricing.pro.suffix}</span></div>
               <ul className={styles.features}>
-                <li>✓ Everything in Premium</li>
+                <li>✓ Unlimited subjects & flashcards</li>
+                <li>✓ All 10,000+ exam topics</li>
                 <li>✓ AI card generation</li>
                 <li>✓ AI voice analysis</li>
                 <li>✓ Past papers & mark schemes</li>
                 <li>✓ Advanced analytics</li>
               </ul>
-              <ComingSoonButton variant="secondary" className={styles.btn}>
-                Start Free Trial
+              <p className={styles.billingHint} style={{ marginTop: '0.75rem' }}>
+                Get Pro free for your first 30 days. No credit card required.
+              </p>
+              <ComingSoonButton variant="primary" className={styles.btn}>
+                Get Pro free for 30 days
               </ComingSoonButton>
             </div>
           </div>
