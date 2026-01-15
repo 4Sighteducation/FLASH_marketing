@@ -1,13 +1,20 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
-export default function ParentsPage() {
+function ParentsPageInner() {
+  const searchParams = useSearchParams();
   const [childEmail, setChildEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const canSubmit = useMemo(() => childEmail.trim().length > 3 && childEmail.includes('@'), [childEmail]);
+
+  useEffect(() => {
+    const fromQuery = (searchParams?.get('child_email') || '').trim();
+    if (fromQuery && fromQuery.includes('@')) setChildEmail(fromQuery);
+  }, [searchParams]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,14 +44,14 @@ export default function ParentsPage() {
 
   return (
     <main style={{ maxWidth: 720, margin: '0 auto', padding: '48px 20px' }}>
-      <h1 style={{ fontSize: 36, marginBottom: 8 }}>Unlock FL4SH Pro for your child</h1>
+      <h1 style={{ fontSize: 36, marginBottom: 8 }}>Keep your child studying like a Pro</h1>
       <p style={{ opacity: 0.85, marginBottom: 28 }}>
-        Pay once and your child gets full Pro access for a year.
+        Your child gets Pro free for their first 30 days. If they want to keep Pro afterwards, you can pay here.
       </p>
 
       <div style={{ border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: 20 }}>
-        <h2 style={{ fontSize: 20, marginTop: 0 }}>Parent Revision Pass</h2>
-        <p style={{ margin: '6px 0 18px 0', opacity: 0.85 }}>£39.99 / year (auto-renewing)</p>
+        <h2 style={{ fontSize: 20, marginTop: 0 }}>Pro (Annual)</h2>
+        <p style={{ margin: '6px 0 18px 0', opacity: 0.85 }}>£39.99 / year (2 months free)</p>
 
         <form onSubmit={onSubmit} style={{ display: 'grid', gap: 12 }}>
           <label style={{ display: 'grid', gap: 6 }}>
@@ -87,10 +94,18 @@ export default function ParentsPage() {
         </form>
 
         <p style={{ fontSize: 13, opacity: 0.75, marginTop: 14 }}>
-          After payment, we’ll email your child a redeem link and code. They’ll sign in (including Sign in with Apple)
-          and unlock Pro.
+          After checkout, we’ll email your child a redeem link and code. They’ll sign in (including Sign in with Apple) and
+          unlock Pro. You can cancel anytime.
         </p>
       </div>
     </main>
+  );
+}
+
+export default function ParentsPage() {
+  return (
+    <Suspense>
+      <ParentsPageInner />
+    </Suspense>
   );
 }
