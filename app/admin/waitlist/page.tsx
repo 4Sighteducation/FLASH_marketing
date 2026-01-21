@@ -13,6 +13,7 @@ export default function WaitlistPage() {
   const [loading, setLoading] = useState(false);
   const [offset, setOffset] = useState(0);
   const limit = 50;
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'converted'>('all');
   const [autoProDays, setAutoProDays] = useState('365');
   const TOP_N = 50;
   const [newTesterEmail, setNewTesterEmail] = useState('');
@@ -23,6 +24,12 @@ export default function WaitlistPage() {
   const [dryRun, setDryRun] = useState(true);
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState<any>(null);
+  const [feedbackSubject, setFeedbackSubject] = useState('Quick FL4SH feedback (2 mins) 🙏');
+  const [feedbackPreviewTo, setFeedbackPreviewTo] = useState('');
+  const [feedbackSendLimit, setFeedbackSendLimit] = useState('100');
+  const [feedbackDryRun, setFeedbackDryRun] = useState(true);
+  const [feedbackSending, setFeedbackSending] = useState(false);
+  const [feedbackResult, setFeedbackResult] = useState<any>(null);
 
   const fetchRows = async (nextOffset = 0) => {
     setLoading(true);
@@ -33,7 +40,14 @@ export default function WaitlistPage() {
         offset: String(nextOffset),
       });
       const res = await adminFetch<WaitlistResponse>(`/api/admin/waitlist?${qs.toString()}`, { method: 'GET' });
-      setRows(res.rows || []);
+      const all = res.rows || [];
+      const filtered =
+        statusFilter === 'pending'
+          ? all.filter((r: any) => !(r?.converted_at || r?.converted_user_id))
+          : statusFilter === 'converted'
+            ? all.filter((r: any) => r?.converted_at || r?.converted_user_id)
+            : all;
+      setRows(filtered);
       setCount(res.count || 0);
       setOffset(res.offset || 0);
     } catch (e: any) {
@@ -47,6 +61,13 @@ export default function WaitlistPage() {
     fetchRows(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    // Re-filter current page when filter changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchRows(offset);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter]);
 
 
   const canPrev = offset > 0;
@@ -149,6 +170,48 @@ export default function WaitlistPage() {
     }
   };
 
+  const sendFeedbackEmail = async (mode: 'preview' | 'batch') => {
+    if (feedbackSending) return;
+
+    if (mode === 'preview') {
+      const email = feedbackPreviewTo.trim().toLowerCase();
+      if (!email || !email.includes('@')) {
+        alert('Enter a valid preview email address');
+        return;
+      }
+    } else {
+      if (
+        !confirm(
+          `Send FEEDBACK email to up to ${Number(feedbackSendLimit) || 100} CONVERTED waitlist users where Feedback sent = No?`
+        )
+      )
+        return;
+    }
+
+    setFeedbackSending(true);
+    setFeedbackResult(null);
+    try {
+      const res = await adminFetch<any>('/api/admin/waitlist/send-feedback-email', {
+        method: 'POST',
+        body: JSON.stringify({
+          mode,
+          preview_to: feedbackPreviewTo.trim(),
+          subject: feedbackSubject.trim(),
+          limit: Number(feedbackSendLimit) || 100,
+          dry_run: feedbackDryRun === true,
+        }),
+      });
+      setFeedbackResult(res);
+      if (mode === 'batch' && !feedbackDryRun) {
+        await fetchRows(0);
+      }
+    } catch (e: any) {
+      alert(e?.message || 'Failed to send');
+    } finally {
+      setFeedbackSending(false);
+    }
+  };
+
   return (
     <div>
       <h2 className="section-title">📧 Waitlist</h2>
@@ -161,13 +224,18 @@ export default function WaitlistPage() {
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && fetchRows(0)}
         />
+        <select className="search-input" style={{ maxWidth: 180 }} value={statusFilter} onChange={(e) => setStatusFilter((e.target.value as any) || 'all')}>
+          <option value="all">All</option>
+          <option value="pending">Pending (not converted)</option>
+          <option value="converted">Converted ✅</option>
+        </select>
         <button className="search-button" onClick={() => fetchRows(0)} disabled={loading}>
           {loading ? '...' : '🔍 Search'}
         </button>
       </div>
 
       <div style={{ color: '#94A3B8', fontSize: '14px', marginBottom: '16px' }}>
-        {count} total • showing {rows.length} • offset {offset}
+        {count} total • showing {rows.length} (filter: {statusFilter}) • offset {offset}
       </div>
 
       <div className="stat-card" style={{ textAlign: 'left', marginBottom: 16 }}>
@@ -234,6 +302,71 @@ export default function WaitlistPage() {
         ) : null}
       </div>
 
+      <div className="stat-card" style={{ textAlign: 'left', marginBottom: 16 }}>
+        <div style={{ fontWeight: 900, color: '#E2E8F0', fontSize: 16, marginBottom: 10 }}>📝 Feedback email</div>
+        <div style={{ color: '#94A3B8', fontWeight: 800, fontSize: 13, marginBottom: 10 }}>
+          Sends a short email linking to <code style={{ color: '#E2E8F0' }}>/tester-feedback</code>. Uses{' '}
+          <code style={{ color: '#E2E8F0' }}>SENDGRID_WAITLIST_FEEDBACK_TEMPLATE</code> if set.
+        </div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            className="search-input"
+            style={{ maxWidth: 420 }}
+            placeholder="Subject"
+            value={feedbackSubject}
+            onChange={(e) => setFeedbackSubject(e.target.value)}
+          />
+          <input
+            className="search-input"
+            style={{ maxWidth: 280 }}
+            placeholder="Preview to (email)"
+            value={feedbackPreviewTo}
+            onChange={(e) => setFeedbackPreviewTo(e.target.value)}
+          />
+          <input
+            className="search-input"
+            style={{ maxWidth: 140 }}
+            placeholder="Max recipients"
+            value={feedbackSendLimit}
+            onChange={(e) => setFeedbackSendLimit(e.target.value)}
+            inputMode="numeric"
+          />
+          <div style={{ color: '#94A3B8', fontWeight: 800, fontSize: 12 }}>
+            Sends only to waitlist users where <b>Converted = Yes</b> and <b>Feedback sent = No</b>.
+          </div>
+          <label style={{ color: '#94A3B8', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input type="checkbox" checked={feedbackDryRun} onChange={(e) => setFeedbackDryRun(e.target.checked)} />
+            Dry run
+          </label>
+          <button className="action-button" disabled={feedbackSending} onClick={() => sendFeedbackEmail('preview')}>
+            {feedbackSending ? '…' : 'Send preview'}
+          </button>
+          <button className="action-button" disabled={feedbackSending} onClick={() => sendFeedbackEmail('batch')}>
+            {feedbackSending ? '…' : 'Send batch'}
+          </button>
+        </div>
+
+        {feedbackResult ? (
+          <div style={{ marginTop: 12, color: '#E2E8F0', fontWeight: 800, fontSize: 13 }}>
+            <div style={{ color: '#94A3B8', marginBottom: 6 }}>
+              Result: mode={String(feedbackResult.mode)} • dryRun={String(feedbackResult.dryRun)}
+              {typeof feedbackResult.sent === 'number' ? ` • sent=${feedbackResult.sent}` : ''}
+              {typeof feedbackResult.failed === 'number' ? ` • failed=${feedbackResult.failed}` : ''}
+              {typeof feedbackResult.attempted === 'number' ? ` • attempted=${feedbackResult.attempted}` : ''}
+            </div>
+            {Array.isArray(feedbackResult.results) ? (
+              <details>
+                <summary style={{ cursor: 'pointer' }}>Details</summary>
+                <pre style={{ margin: '10px 0 0 0', whiteSpace: 'pre-wrap' }}>
+                  {JSON.stringify(feedbackResult.results.slice(0, 50), null, 2)}
+                </pre>
+                {feedbackResult.results.length > 50 ? <div style={{ color: '#94A3B8' }}>Showing first 50 results…</div> : null}
+              </details>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
         <span style={{ color: '#94A3B8', fontSize: 14, fontWeight: 700 }}>Add tester (bypass public cap):</span>
         <input
@@ -287,11 +420,13 @@ export default function WaitlistPage() {
             <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <th style={{ padding: 12 }}>Email</th>
               <th style={{ padding: 12 }}>Position</th>
-              <th style={{ padding: 12 }}>Top {TOP_N}</th>
+              <th style={{ padding: 12 }}>Eligible (Top {TOP_N})</th>
+              <th style={{ padding: 12 }}>Converted</th>
               <th style={{ padding: 12 }}>Auto Pro</th>
               <th style={{ padding: 12 }}>Granted</th>
               <th style={{ padding: 12 }}>Source</th>
               <th style={{ padding: 12 }}>Notified</th>
+              <th style={{ padding: 12 }}>Feedback sent</th>
               <th style={{ padding: 12 }}>Created</th>
               <th style={{ padding: 12 }}>Actions</th>
             </tr>
@@ -301,11 +436,13 @@ export default function WaitlistPage() {
               <tr key={(r.id as string) || `${r.email}-${idx}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                 <td style={{ padding: 12 }}>{r.email || '—'}</td>
                 <td style={{ padding: 12 }}>{r.position ?? '—'}</td>
-                <td style={{ padding: 12 }}>{r.is_top_twenty ? 'Yes' : 'No'}</td>
+                <td style={{ padding: 12 }}>{r.is_top_twenty || (typeof r.position === 'number' && r.position <= TOP_N) ? '✅' : '—'}</td>
+                <td style={{ padding: 12 }}>{r.converted_at || r.converted_user_id ? '✅' : '—'}</td>
                 <td style={{ padding: 12 }}>{r.auto_pro_enabled ? `Yes (${r.auto_pro_days || 365}d)` : 'No'}</td>
                 <td style={{ padding: 12 }}>{r.auto_pro_granted_at ? new Date(r.auto_pro_granted_at).toLocaleString() : '—'}</td>
                 <td style={{ padding: 12 }}>{r.source || '—'}</td>
                 <td style={{ padding: 12 }}>{r.notified ? 'Yes' : 'No'}</td>
+                <td style={{ padding: 12 }}>{r.feedback_notified ? 'Yes' : 'No'}</td>
                 <td style={{ padding: 12 }}>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
                 <td style={{ padding: 12 }}>
                   {r.id ? (
@@ -335,7 +472,7 @@ export default function WaitlistPage() {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td style={{ padding: 12, color: '#94A3B8' }} colSpan={9}>
+                <td style={{ padding: 12, color: '#94A3B8' }} colSpan={11}>
                   No rows.
                 </td>
               </tr>

@@ -38,6 +38,9 @@ export default function UserManagement() {
   const [selectedById, setSelectedById] = useState<Record<string, boolean>>({});
   const [busyBulk, setBusyBulk] = useState<string | null>(null);
   const [bulkTier, setBulkTier] = useState<'free' | 'premium' | 'pro'>('pro');
+  const [feedbackSubject, setFeedbackSubject] = useState('Quick FL4SH feedback (2 mins) 🙏');
+  const [feedbackDryRun, setFeedbackDryRun] = useState(true);
+  const [feedbackForce, setFeedbackForce] = useState(false);
 
   // Dual horizontal scrollbars: one above the table, one on the table container.
   const topScrollRef = useRef<HTMLDivElement | null>(null);
@@ -366,6 +369,40 @@ export default function UserManagement() {
     }
   };
 
+  const bulkSendFeedbackEmail = async () => {
+    if (selectedCount === 0) return;
+    if (
+      !confirm(
+        `Send feedback email to ${selectedCount} selected users?\n\n${
+          feedbackDryRun ? 'Dry run ON (no emails will send).' : 'Dry run OFF (emails will send).'
+        }\n${feedbackForce ? 'Force ON (will re-send even if previously sent).' : 'Force OFF (skips already-sent).'}`
+      )
+    )
+      return;
+
+    setBusyBulk('Sending feedback emails…');
+    try {
+      const res = await adminFetch<any>('/api/admin/users/send-feedback-email', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_ids: selectedIds,
+          subject: feedbackSubject.trim(),
+          dry_run: feedbackDryRun === true,
+          force: feedbackForce === true,
+        }),
+      });
+      alert(
+        `Feedback email batch done.\n\nAttempted: ${res.attempted}\nSent: ${res.sent}\nFailed: ${res.failed}\nSkipped: ${res.skipped}${
+          feedbackDryRun ? '\n\n(Dry run: no emails were sent.)' : ''
+        }`
+      );
+    } catch (e: any) {
+      alert('Error: ' + (e?.message || 'Failed to send feedback email'));
+    } finally {
+      setBusyBulk(null);
+    }
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -393,6 +430,26 @@ export default function UserManagement() {
             Selected: {selectedCount} {busyBulk ? `• ${busyBulk}` : ''}
           </div>
           <div className="admin-actions">
+            <input
+              className="search-input"
+              style={{ width: 260, height: 42 }}
+              value={feedbackSubject}
+              onChange={(e) => setFeedbackSubject(e.target.value)}
+              placeholder="Feedback email subject"
+              disabled={!!busyBulk}
+              title="Subject for feedback email"
+            />
+            <label style={{ color: '#94A3B8', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input type="checkbox" checked={feedbackDryRun} onChange={(e) => setFeedbackDryRun(e.target.checked)} disabled={!!busyBulk} />
+              Dry run
+            </label>
+            <label style={{ color: '#94A3B8', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input type="checkbox" checked={feedbackForce} onChange={(e) => setFeedbackForce(e.target.checked)} disabled={!!busyBulk} />
+              Force re-send
+            </label>
+            <button className="action-button" onClick={bulkSendFeedbackEmail} disabled={!!busyBulk}>
+              📝 Send feedback email
+            </button>
             <button className="action-button" onClick={bulkSetProOneYear} disabled={!!busyBulk}>
               ⭐ Pro (1 year)
             </button>
