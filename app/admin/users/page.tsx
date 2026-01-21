@@ -26,11 +26,23 @@ type AdminUserRow = {
   monetization?: { redemptions_count: number; parent_purchases_count: number };
 };
 type UsersResponse = { rows: AdminUserRow[]; limit: number; offset: number; hasMore: boolean };
+type DashboardStats = {
+  ok: boolean;
+  usersCount: number;
+  waitlistCount: number;
+  active7dCount: number;
+  proCount: number;
+  premiumCount: number;
+  redeemsCount: number;
+  parentBuysCount: number;
+};
 
 export default function UserManagement() {
   const [q, setQ] = useState('');
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [statsBusy, setStatsBusy] = useState(false);
   const [expiresAt, setExpiresAt] = useState<string>('');
   const [pageSize, setPageSize] = useState<'100' | '15'>('100');
   const [offset, setOffset] = useState(0);
@@ -114,9 +126,34 @@ export default function UserManagement() {
     }
   };
 
+  const fetchStats = async () => {
+    try {
+      const dash = await adminFetch<DashboardStats>('/api/admin/dashboard', { method: 'GET' });
+      setStats(dash);
+    } catch {
+      // non-fatal
+    }
+  };
+
+  const refreshEngagementStats = async () => {
+    if (statsBusy) return;
+    setStatsBusy(true);
+    try {
+      await adminFetch('/api/admin/dashboard', { method: 'POST', body: JSON.stringify({}) });
+      await fetchStats();
+      await fetchUsers(offset);
+      alert('Refreshed engagement stats (materialized view).');
+    } catch (e: any) {
+      alert(e?.message || 'Failed to refresh engagement stats');
+    } finally {
+      setStatsBusy(false);
+    }
+  };
+
   useEffect(() => {
     // Initial load: show users immediately (no search required)
     fetchUsers(0);
+    fetchStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -421,8 +458,40 @@ export default function UserManagement() {
           <button onClick={() => fetchUsers(0)} disabled={loading} className="action-button">
             {loading ? '...' : '🔄 Refresh'}
           </button>
+          <button onClick={refreshEngagementStats} disabled={loading || statsBusy} className="action-button" title="Refresh user_daily_study_stats_mv (used for streak/reviews)">
+            {statsBusy ? '…' : '📈 Refresh stats'}
+          </button>
         </div>
       </div>
+
+      {stats ? (
+        <div className="dashboard-grid" style={{ marginTop: 14 }}>
+          <div className="stat-card stat-card-cyan">
+            <div className="stat-number">{stats.usersCount ?? '—'}</div>
+            <div className="stat-label">Users</div>
+          </div>
+          <div className="stat-card stat-card-pink">
+            <div className="stat-number">{stats.active7dCount ?? '—'}</div>
+            <div className="stat-label">Active (7d)</div>
+          </div>
+          <div className="stat-card stat-card-cyan">
+            <div className="stat-number">{stats.proCount ?? '—'}</div>
+            <div className="stat-label">Pro (count)</div>
+          </div>
+          <div className="stat-card stat-card-pink">
+            <div className="stat-number">{stats.redeemsCount ?? '—'}</div>
+            <div className="stat-label">Redeems</div>
+          </div>
+          <div className="stat-card stat-card-cyan">
+            <div className="stat-number">{stats.parentBuysCount ?? '—'}</div>
+            <div className="stat-label">Parent buys</div>
+          </div>
+          <div className="stat-card stat-card-pink">
+            <div className="stat-number">{stats.waitlistCount ?? '—'}</div>
+            <div className="stat-label">Waitlist</div>
+          </div>
+        </div>
+      ) : null}
 
       {selectedCount > 0 ? (
         <div className="admin-bulkbar">

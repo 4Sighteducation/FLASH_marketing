@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { adminFetch } from '../../../lib/adminClient';
 
 type WaitlistRow = Record<string, any>;
@@ -30,6 +30,11 @@ export default function WaitlistPage() {
   const [feedbackDryRun, setFeedbackDryRun] = useState(true);
   const [feedbackSending, setFeedbackSending] = useState(false);
   const [feedbackResult, setFeedbackResult] = useState<any>(null);
+
+  // Match the dense Users table UX (dual horizontal scrollbars)
+  const topScrollRef = useRef<HTMLDivElement | null>(null);
+  const topScrollSpacerRef = useRef<HTMLDivElement | null>(null);
+  const tableScrollRef = useRef<HTMLDivElement | null>(null);
 
   const fetchRows = async (nextOffset = 0) => {
     setLoading(true);
@@ -68,6 +73,56 @@ export default function WaitlistPage() {
     fetchRows(offset);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
+
+  // Keep top scrollbar spacer width in sync with table scrollWidth
+  useEffect(() => {
+    const tableEl = tableScrollRef.current;
+    const spacerEl = topScrollSpacerRef.current;
+    if (!tableEl || !spacerEl) return;
+
+    const update = () => {
+      spacerEl.style.width = `${tableEl.scrollWidth}px`;
+    };
+    update();
+    const RO = (window as any).ResizeObserver;
+    const ro = RO ? new RO(update) : null;
+    if (ro) ro.observe(tableEl);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      try {
+        ro?.disconnect?.();
+      } catch {}
+    };
+  }, [rows]);
+
+  // Sync scroll positions (top <-> bottom)
+  useEffect(() => {
+    const topEl = topScrollRef.current;
+    const tableEl = tableScrollRef.current;
+    if (!topEl || !tableEl) return;
+
+    let lock = false;
+    const onTop = () => {
+      if (lock) return;
+      lock = true;
+      tableEl.scrollLeft = topEl.scrollLeft;
+      lock = false;
+    };
+    const onTable = () => {
+      if (lock) return;
+      lock = true;
+      topEl.scrollLeft = tableEl.scrollLeft;
+      lock = false;
+    };
+
+    topEl.addEventListener('scroll', onTop);
+    tableEl.addEventListener('scroll', onTable);
+    return () => {
+      topEl.removeEventListener('scroll', onTop);
+      tableEl.removeEventListener('scroll', onTable);
+    };
+  }, []);
 
 
   const canPrev = offset > 0;
@@ -414,8 +469,13 @@ export default function WaitlistPage() {
         </button>
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', color: '#E2E8F0' }}>
+      {/* Top horizontal scrollbar (synced) */}
+      <div ref={topScrollRef} className="admin-topscroll" aria-hidden="true">
+        <div ref={topScrollSpacerRef} style={{ height: 1 }} />
+      </div>
+
+      <div ref={tableScrollRef} className="admin-tablewrap">
+        <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', color: '#E2E8F0' }}>
           <thead>
             <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <th style={{ padding: 12 }}>Email</th>
@@ -427,8 +487,8 @@ export default function WaitlistPage() {
               <th style={{ padding: 12 }}>Source</th>
               <th style={{ padding: 12 }}>Notified</th>
               <th style={{ padding: 12 }}>Feedback sent</th>
-              <th style={{ padding: 12 }}>Created</th>
-              <th style={{ padding: 12 }}>Actions</th>
+              <th style={{ padding: 12, minWidth: 180 }}>Created</th>
+              <th style={{ padding: 12, minWidth: 260 }}>Actions</th>
             </tr>
           </thead>
           <tbody>

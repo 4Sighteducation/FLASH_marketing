@@ -98,9 +98,9 @@ export default function AdminLayout({
           </span>
         ) : null}
         <div className="admin-nav-links">
-          <a href="/admin" className="nav-link">Dashboard</a>
-          <a href="/admin/curriculum" className="nav-link">Curriculum</a>
+          {/* Consolidated: Users page contains the dashboard KPIs */}
           <a href="/admin/users" className="nav-link">Users</a>
+          <a href="/admin/curriculum" className="nav-link">Curriculum</a>
           <a href="/admin/feedback" className="nav-link">Feedback</a>
           <a href="/admin/waitlist" className="nav-link">Waitlist</a>
           <a href="/admin/codes" className="nav-link">Codes</a>

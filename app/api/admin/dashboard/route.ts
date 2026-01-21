@@ -87,3 +87,22 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Manual refresh for the materialized view used by streak/reviews (user_daily_study_stats_mv).
+// This exists because MVs don't auto-refresh.
+export async function POST(request: NextRequest) {
+  try {
+    const token = parseBearerToken(request.headers.get('authorization'));
+    if (!token) return NextResponse.json({ error: 'Missing bearer token' }, { status: 401 });
+    await requireAdminFromBearerToken(token);
+
+    const supabase = getServiceClient();
+    const { error } = await (supabase as any).rpc('refresh_user_daily_study_stats_mv', {});
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    const msg = typeof e?.message === 'string' ? e.message : 'Unauthorized';
+    const status = msg === 'Forbidden' ? 403 : 401;
+    return NextResponse.json({ error: msg }, { status });
+  }
+}
+
