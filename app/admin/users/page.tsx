@@ -53,10 +53,11 @@ export default function UserManagement() {
   const [feedbackSubject, setFeedbackSubject] = useState('Quick FL4SH feedback (2 mins) 🙏');
   const [feedbackDryRun, setFeedbackDryRun] = useState(true);
   const [feedbackForce, setFeedbackForce] = useState(false);
+  const [trialDays, setTrialDays] = useState('30');
+  const [trialSubject, setTrialSubject] = useState('FL4SH Pro unlocked for 30 days ⚡');
+  const [trialDryRun, setTrialDryRun] = useState(true);
+  const [trialSendEmail, setTrialSendEmail] = useState(true);
 
-  // Dual horizontal scrollbars: one above the table, one on the table container.
-  const topScrollRef = useRef<HTMLDivElement | null>(null);
-  const topScrollSpacerRef = useRef<HTMLDivElement | null>(null);
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const headCheckboxRef = useRef<HTMLInputElement | null>(null);
 
@@ -163,55 +164,7 @@ export default function UserManagement() {
     headCheckboxRef.current.indeterminate = !allOnPageSelected && someOnPageSelected;
   }, [allOnPageSelected, someOnPageSelected]);
 
-  // Keep top scrollbar spacer width in sync with table scrollWidth
-  useEffect(() => {
-    const tableEl = tableScrollRef.current;
-    const spacerEl = topScrollSpacerRef.current;
-    if (!tableEl || !spacerEl) return;
-
-    const update = () => {
-      spacerEl.style.width = `${tableEl.scrollWidth}px`;
-    };
-    update();
-    const RO = (window as any).ResizeObserver;
-    const ro = RO ? new RO(update) : null;
-    if (ro) ro.observe(tableEl);
-    window.addEventListener('resize', update);
-    return () => {
-      window.removeEventListener('resize', update);
-      try {
-        ro?.disconnect?.();
-      } catch {}
-    };
-  }, [users, pageSize]);
-
-  // Sync scroll positions (top <-> bottom)
-  useEffect(() => {
-    const topEl = topScrollRef.current;
-    const tableEl = tableScrollRef.current;
-    if (!topEl || !tableEl) return;
-
-    let lock = false;
-    const onTop = () => {
-      if (lock) return;
-      lock = true;
-      tableEl.scrollLeft = topEl.scrollLeft;
-      lock = false;
-    };
-    const onTable = () => {
-      if (lock) return;
-      lock = true;
-      topEl.scrollLeft = tableEl.scrollLeft;
-      lock = false;
-    };
-
-    topEl.addEventListener('scroll', onTop);
-    tableEl.addEventListener('scroll', onTable);
-    return () => {
-      topEl.removeEventListener('scroll', onTop);
-      tableEl.removeEventListener('scroll', onTable);
-    };
-  }, []);
+  // (Previously we had synced horizontal scrollbars; the default table is now narrow enough to avoid that.)
 
   const changeTier = async (userId: string, newTier: string, email: string | null) => {
     if (!confirm(`Change ${email || userId} to ${newTier}?`)) return;
@@ -440,6 +393,45 @@ export default function UserManagement() {
     }
   };
 
+  const grantProTrialToLegacyFreeUsers = async () => {
+    const days = Number(trialDays) || 30;
+    if (
+      !confirm(
+        `Grant Pro for ${days} days to ALL users currently tier=free?\n\nThis writes to beta_access (override).\n\n${
+          trialDryRun ? 'Dry run ON (no DB writes / no emails).' : 'Dry run OFF (will apply changes).'
+        }\n${trialSendEmail ? 'Will send an email to each upgraded user.' : 'No emails will be sent.'}`
+      )
+    )
+      return;
+
+    setBusyBulk('Granting Pro trial…');
+    try {
+      const res = await adminFetch<any>('/api/admin/users/bulk-grant-pro-trial', {
+        method: 'POST',
+        body: JSON.stringify({
+          days,
+          dry_run: trialDryRun === true,
+          send_email: trialSendEmail === true,
+          subject: trialSubject.trim(),
+        }),
+      });
+
+      alert(
+        `Pro trial batch finished.\n\nAttempted: ${res.attempted}\nSuccess: ${res.success}\nFailed: ${res.failed}${
+          trialDryRun ? '\n\n(Dry run: no changes were made.)' : ''
+        }`
+      );
+
+      // Refresh table so tiers reflect the change (beta_access override)
+      await fetchUsers(0);
+      await fetchStats();
+    } catch (e: any) {
+      alert('Error: ' + (e?.message || 'Failed to grant Pro trial'));
+    } finally {
+      setBusyBulk(null);
+    }
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -492,6 +484,45 @@ export default function UserManagement() {
           </div>
         </div>
       ) : null}
+
+      <div className="admin-card" style={{ padding: 14, marginTop: 14 }}>
+        <div style={{ fontWeight: 900, color: '#E2E8F0', marginBottom: 10 }}>⭐ Legacy free → Pro trial</div>
+        <div style={{ color: '#94A3B8', fontWeight: 800, fontSize: 13, marginBottom: 10 }}>
+          Grants <b>Pro</b> for a fixed period to all users currently resolved as <b>free</b> (older signups). Uses <code style={{ color: '#E2E8F0' }}>beta_access</code>.
+        </div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            className="search-input"
+            style={{ maxWidth: 120 }}
+            value={trialDays}
+            onChange={(e) => setTrialDays(e.target.value)}
+            inputMode="numeric"
+            placeholder="Days"
+            title="Trial length (days)"
+            disabled={!!busyBulk}
+          />
+          <input
+            className="search-input"
+            style={{ maxWidth: 420 }}
+            value={trialSubject}
+            onChange={(e) => setTrialSubject(e.target.value)}
+            placeholder="Email subject"
+            title="Email subject"
+            disabled={!!busyBulk}
+          />
+          <label style={{ color: '#94A3B8', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input type="checkbox" checked={trialDryRun} onChange={(e) => setTrialDryRun(e.target.checked)} disabled={!!busyBulk} />
+            Dry run
+          </label>
+          <label style={{ color: '#94A3B8', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input type="checkbox" checked={trialSendEmail} onChange={(e) => setTrialSendEmail(e.target.checked)} disabled={!!busyBulk} />
+            Email users
+          </label>
+          <button className="action-button" onClick={grantProTrialToLegacyFreeUsers} disabled={!!busyBulk}>
+            {busyBulk ? '…' : 'Grant Pro trial to ALL free users'}
+          </button>
+        </div>
+      </div>
 
       {selectedCount > 0 ? (
         <div className="admin-bulkbar">
@@ -599,11 +630,6 @@ export default function UserManagement() {
         />
       </div>
 
-      {/* Top horizontal scrollbar (synced) so you don't need to scroll to the bottom first */}
-      <div ref={topScrollRef} className="admin-topscroll" aria-hidden="true">
-        <div ref={topScrollSpacerRef} style={{ height: 1 }} />
-      </div>
-
       <div ref={tableScrollRef} className="admin-tablewrap">
         <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse', color: '#E2E8F0' }}>
           <thead>
@@ -612,18 +638,11 @@ export default function UserManagement() {
                 <input ref={headCheckboxRef} type="checkbox" checked={allOnPageSelected} onChange={toggleSelectAllOnPage} />
               </th>
               <th style={{ padding: 12 }}>Email</th>
-              <th style={{ padding: 12 }}>Name</th>
               <th style={{ padding: 12 }}>Tier</th>
-              <th style={{ padding: 12 }}>Subjects</th>
               <th style={{ padding: 12 }}>Cards</th>
               <th style={{ padding: 12 }}>Last active</th>
-              <th style={{ padding: 12 }}>Reviews 7d</th>
               <th style={{ padding: 12 }}>Streak</th>
-              <th style={{ padding: 12 }}>Device</th>
               <th style={{ padding: 12 }}>Country</th>
-              <th style={{ padding: 12 }}>Redeems</th>
-              <th style={{ padding: 12 }}>Parent buys</th>
-              <th style={{ padding: 12 }}>Joined</th>
               <th style={{ padding: 12, minWidth: 320 }}>Actions</th>
             </tr>
           </thead>
@@ -639,21 +658,14 @@ export default function UserManagement() {
                     <input type="checkbox" checked={!!selectedById[u.id]} onChange={() => toggleSelectOne(u.id)} />
                   </td>
                   <td style={{ padding: 12 }}>{u.email || '(no email)'}</td>
-                  <td style={{ padding: 12 }}>{u.name || '—'}</td>
                   <td style={{ padding: 12 }}>
                     <span className={`tier-badge tier-${tier}`}>{tier}</span>
                     <span style={{ color: '#64748B', fontSize: 11 }}>{src}</span>
                   </td>
-                  <td style={{ padding: 12 }}>{u.activation?.subjects_count ?? 0}</td>
                   <td style={{ padding: 12 }}>{u.activation?.cards_count ?? 0}</td>
                   <td style={{ padding: 12 }}>{lastActive ? new Date(lastActive).toLocaleString() : '—'}</td>
-                  <td style={{ padding: 12 }}>{u.engagement?.reviews_7d ?? 0}</td>
                   <td style={{ padding: 12 }}>{u.engagement?.streak_days ?? 0}</td>
-                  <td style={{ padding: 12 }}>{deviceLabel}</td>
                   <td style={{ padding: 12 }}>{u.device?.country || '—'}</td>
-                  <td style={{ padding: 12 }}>{u.monetization?.redemptions_count ?? 0}</td>
-                  <td style={{ padding: 12 }}>{u.monetization?.parent_purchases_count ?? 0}</td>
-                  <td style={{ padding: 12 }}>{u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</td>
                   <td style={{ padding: 12 }}>
                     <div className="admin-actions">
                       <a className="action-button" href={`/admin/users/${u.id}`} style={{ padding: '7px 10px', fontSize: 12 }}>
@@ -693,7 +705,7 @@ export default function UserManagement() {
             })}
             {users.length === 0 ? (
               <tr>
-                <td style={{ padding: 12, color: '#94A3B8' }} colSpan={13}>
+                <td style={{ padding: 12, color: '#94A3B8' }} colSpan={7}>
                   {loading ? 'Loading…' : 'No users.'}
                 </td>
               </tr>
