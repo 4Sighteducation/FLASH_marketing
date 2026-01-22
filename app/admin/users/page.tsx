@@ -381,11 +381,33 @@ export default function UserManagement() {
           force: feedbackForce === true,
         }),
       });
-      alert(
-        `Feedback email batch done.\n\nAttempted: ${res.attempted}\nSent: ${res.sent}\nFailed: ${res.failed}\nSkipped: ${res.skipped}${
-          feedbackDryRun ? '\n\n(Dry run: no emails were sent.)' : ''
-        }`
-      );
+      const lines =
+        Array.isArray(res?.results) && res.results.length
+          ? (res.results as any[])
+              .slice(0, 25)
+              .map((r) => {
+                const email = r?.email ? String(r.email) : '(no email)';
+                const status = r?.skipped ? 'SKIPPED' : r?.ok ? 'SENT' : 'FAILED';
+                const err = r?.error ? ` — ${String(r.error).slice(0, 140)}` : '';
+                return `${status}\t${email}${err}`;
+              })
+              .join('\n')
+          : '';
+
+      const summary = `Feedback email batch done.\n\nAttempted: ${res.attempted}\nSent: ${res.sent}\nFailed: ${res.failed}\nSkipped: ${res.skipped}${
+        feedbackDryRun ? '\n\n(Dry run: no emails were sent.)' : ''
+      }${
+        res?.skipped && !feedbackForce
+          ? '\n\nTip: If a user was SKIPPED it’s because they already received this feedback email. Tick “Force re-send” to override.'
+          : ''
+      }`;
+
+      alert(lines ? `${summary}\n\nFirst results:\n${lines}` : summary);
+
+      // Copy results to clipboard when available (makes it easy to audit).
+      try {
+        if (lines) await navigator.clipboard.writeText(lines);
+      } catch {}
     } catch (e: any) {
       alert('Error: ' + (e?.message || 'Failed to send feedback email'));
     } finally {
