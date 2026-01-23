@@ -64,6 +64,26 @@ export default function Home() {
     ]
   };
 
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "FL4SH",
+    "url": "https://www.fl4shcards.com",
+    "logo": "https://www.fl4shcards.com/flash_assets/flash-logo-512.png",
+  };
+
+  const websiteSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "FL4SH",
+    "url": "https://www.fl4shcards.com",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://www.fl4shcards.com/?q={search_term_string}",
+      "query-input": "required name=search_term_string",
+    },
+  };
+
   const features = [
     {
       icon: '📋',
@@ -110,6 +130,14 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+      />
       
       <Navigation />
       <LaunchBanner />
@@ -143,7 +171,7 @@ export default function Home() {
             </h1>
             
             <p className={styles.heroSubtitle}>
-              The only flashcard app built from <span className={styles.neonText}>real exam specifications</span>.
+              FL4SH is the only flashcard app built from <span className={styles.neonText}>real exam specifications</span>.
               Over 10,000 topics, thousands of past papers, and AI trained on mark schemes.
               Study smarter with <span className={styles.neonTextPink}>the famous Leitner Box method</span>.
             </p>
