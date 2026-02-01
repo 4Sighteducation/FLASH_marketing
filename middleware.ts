@@ -20,6 +20,14 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
+  // Fix legacy/typo URLs (keep a permanent redirect for SEO)
+  if (pathname === '/pricavy') {
+    const url = req.nextUrl.clone();
+    url.pathname = '/privacy';
+    url.search = '';
+    return NextResponse.redirect(url, 308);
+  }
+
   // Allow login page (and Next internals)
   if (pathname === '/admin/login' || pathname.startsWith('/admin/login/')) return NextResponse.next();
 
