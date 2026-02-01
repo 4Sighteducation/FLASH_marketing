@@ -21,7 +21,7 @@ export function middleware(req: NextRequest) {
   }
 
   // Fix legacy/typo URLs (keep a permanent redirect for SEO)
-  if (pathname === '/pricavy') {
+  if (pathname === '/pricavy' || pathname === '/pricavy/') {
     const url = req.nextUrl.clone();
     url.pathname = '/privacy';
     url.search = '';
