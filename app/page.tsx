@@ -93,11 +93,6 @@ export default function Home() {
     "name": "FL4SH - GCSE & A-Level Flashcards",
     "operatingSystem": "iOS, Android",
     "applicationCategory": "EducationalApplication",
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "4.5",
-      "ratingCount": "100"
-    },
     "offers": {
       "@type": "Offer",
       "price": "0",

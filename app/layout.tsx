@@ -61,10 +61,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="icon" type="image/x-icon" href="/flash_assets/favicon.ico" />
+        {/* Root favicon for crawlers (Google/Bing often request /favicon.ico) */}
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        {/* Use real PNG favicons (some .ico files in repo are PNG-in-disguise) */}
         <link rel="icon" type="image/png" sizes="16x16" href="/flash_assets/favicon-16.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/flash_assets/favicon-32.png" />
         <link rel="icon" type="image/png" sizes="48x48" href="/flash_assets/favicon-48.png" />
+        <link rel="shortcut icon" type="image/png" href="/flash_assets/favicon-32.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/flash_assets/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#0A0A1F" />
