@@ -19,21 +19,37 @@ export default function LaunchBanner() {
           </div>
           
           <div className={styles.buttonGroup}>
-            <a 
+            <a
               href={APP_STORE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className={styles.downloadButton}
+              className={styles.storeBadgeLink}
+              aria-label="Download FL4SH on the App Store"
             >
-              📱 Download iOS App →
+              <img
+                className={styles.storeBadge}
+                src="/flash_assets/store/app-store-badge.svg"
+                alt="Download on the App Store"
+                width={180}
+                height={60}
+                loading="lazy"
+              />
             </a>
-            <a 
+            <a
               href={GOOGLE_PLAY_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className={styles.downloadButton}
+              className={styles.storeBadgeLink}
+              aria-label="Get FL4SH on Google Play"
             >
-              🤖 Download Android App →
+              <img
+                className={styles.storeBadge}
+                src="/flash_assets/store/google-play-badge.png"
+                alt="Get it on Google Play"
+                width={155}
+                height={60}
+                loading="lazy"
+              />
             </a>
           </div>
         </div>

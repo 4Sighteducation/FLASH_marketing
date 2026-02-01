@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import { usePathname } from 'next/navigation'
 import styles from './Navigation.module.css'
 
 export default function Navigation() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const pathname = usePathname()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -23,6 +25,8 @@ export default function Navigation() {
   const closeMenu = () => {
     setMobileMenuOpen(false)
   }
+
+  const hrefOnHomeOrRoot = (hash: string) => (pathname === '/' ? hash : `/${hash}`)
 
   return (
     <nav className={`${styles.nav} ${scrolled ? styles.scrolled : ''}`}>
@@ -41,12 +45,11 @@ export default function Navigation() {
           
           {/* Desktop Nav Links */}
           <div className={styles.navLinks}>
-            <a href="#features">Features</a>
-            <a href="#subjects">Subjects</a>
-            <a href="#how-it-works">How It Works</a>
-            <a href="#pricing">Pricing</a>
+            <a href={hrefOnHomeOrRoot('#features')}>Features</a>
+            <a href={hrefOnHomeOrRoot('#subjects')}>Subjects</a>
+            <a href={hrefOnHomeOrRoot('#how-it-works')}>How It Works</a>
+            <a href={hrefOnHomeOrRoot('#pricing')}>Pricing</a>
             <a href="/schools">Schools</a>
-            <a href="/android-beta-testers">Android Beta</a>
           </div>
           
           {/* Desktop CTA */}
@@ -71,12 +74,11 @@ export default function Navigation() {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className={styles.mobileMenu}>
-            <a href="#features" onClick={closeMenu}>Features</a>
-            <a href="#subjects" onClick={closeMenu}>Subjects</a>
-            <a href="#how-it-works" onClick={closeMenu}>How It Works</a>
-            <a href="#pricing" onClick={closeMenu}>Pricing</a>
+            <a href={hrefOnHomeOrRoot('#features')} onClick={closeMenu}>Features</a>
+            <a href={hrefOnHomeOrRoot('#subjects')} onClick={closeMenu}>Subjects</a>
+            <a href={hrefOnHomeOrRoot('#how-it-works')} onClick={closeMenu}>How It Works</a>
+            <a href={hrefOnHomeOrRoot('#pricing')} onClick={closeMenu}>Pricing</a>
             <a href="/schools" onClick={closeMenu}>Schools</a>
-            <a href="/android-beta-testers" onClick={closeMenu}>Android Beta</a>
             <a href="/schools" className={styles.mobileCta} onClick={closeMenu}>
               Free School Webinar →
             </a>

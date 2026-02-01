@@ -74,23 +74,23 @@
   flex-wrap: wrap;
 }
 
-.downloadButton {
-  padding: 0.75rem 1.5rem;
-  background: linear-gradient(90deg, #00F5FF, #FF006E);
-  color: white;
-  border: none;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-  display: inline-block;
+.storeBadgeLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.downloadButton:hover {
+.storeBadgeLink:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 20px rgba(0, 245, 255, 0.5);
+  box-shadow: 0 0 18px rgba(0, 245, 255, 0.35);
+}
+
+.storeBadge {
+  height: 44px;
+  width: auto;
+  display: block;
 }
 
 .success {
@@ -130,9 +130,12 @@
     width: 100%;
   }
   
-  .downloadButton {
+  .storeBadgeLink {
     width: 100%;
-    text-align: center;
+  }
+
+  .storeBadge {
+    margin: 0 auto;
   }
 }
 
