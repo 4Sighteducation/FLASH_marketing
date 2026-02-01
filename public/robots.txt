@@ -1,11 +1,22 @@
+# FL4SH - GCSE & A-Level Flashcards App
 # Allow all crawlers
 User-agent: *
 Allow: /
 
+# Block admin and API routes
+Disallow: /api/
+Disallow: /admin/
+
 # Sitemap location
-Sitemap: https://fl4shcards.com/sitemap.xml
 Sitemap: https://www.fl4shcards.com/sitemap.xml
 
-# Block specific paths if needed
-# Disallow: /api/
+# Crawl delay (be nice to servers)
+Crawl-delay: 0
+
+# Allow specific search engines (just for clarity)
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
 

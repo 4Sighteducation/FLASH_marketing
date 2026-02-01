@@ -4,8 +4,7 @@ import Image from 'next/image'
 import { useMemo, useState } from 'react'
 import Navigation from './components/Navigation'
 import LaunchBanner from './components/LaunchBanner'
-import ComingSoonButton from './components/ComingSoonButton'
-import AndroidBetaPopup from './components/AndroidBetaPopup'
+import DownloadButton from './components/DownloadButton'
 import StoreBadges from './components/StoreBadges'
 import SchoolWebinarSignup from './components/SchoolWebinarSignup'
 import styles from './page.module.css'
@@ -58,7 +57,7 @@ export default function Home() {
         "name": "What exam boards are supported?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "All major UK exam boards: AQA, Edexcel, OCR, WJEC, CCEA, and SQA for both GCSE and A-Level. International exams (IB, iGCSE) coming soon!"
+          "text": "All major UK exam boards: AQA, Edexcel, OCR, WJEC, CCEA, and SQA for both GCSE and A-Level. International exams (IB, iGCSE) support expanding soon!"
         }
       }
     ]
@@ -70,6 +69,10 @@ export default function Home() {
     "name": "FL4SH",
     "url": "https://www.fl4shcards.com",
     "logo": "https://www.fl4shcards.com/flash_assets/flash-logo-512.png",
+    "sameAs": [
+      "https://apps.apple.com/in/app/fl4sh-study-smarter/id6747457678",
+      "https://play.google.com/store/apps/details?id=com.foursighteducation.flash"
+    ]
   };
 
   const websiteSchema = {
@@ -82,6 +85,38 @@ export default function Home() {
       "target": "https://www.fl4shcards.com/?q={search_term_string}",
       "query-input": "required name=search_term_string",
     },
+  };
+
+  const mobileAppSchema = {
+    "@context": "https://schema.org",
+    "@type": "MobileApplication",
+    "name": "FL4SH - GCSE & A-Level Flashcards",
+    "operatingSystem": "iOS, Android",
+    "applicationCategory": "EducationalApplication",
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.5",
+      "ratingCount": "100"
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "GBP"
+    },
+    "description": "AI-powered flashcards for GCSE & A-Level revision. 10,000+ topics, past papers, spaced repetition. Free to download with Pro trial.",
+    "screenshot": "https://www.fl4shcards.com/flash_assets/banner-1500x500.png",
+    "downloadUrl": [
+      "https://apps.apple.com/in/app/fl4sh-study-smarter/id6747457678",
+      "https://play.google.com/store/apps/details?id=com.foursighteducation.flash"
+    ],
+    "featureList": [
+      "10,000+ exam specification topics",
+      "AI-powered flashcard generation",
+      "Voice answer analysis with AI feedback",
+      "5-box Leitner spaced repetition system",
+      "Past papers with mark schemes",
+      "Supports all UK exam boards: AQA, Edexcel, OCR, WJEC, CCEA, SQA"
+    ]
   };
 
   const features = [
@@ -118,14 +153,14 @@ export default function Home() {
     {
       icon: '🌍',
       title: 'All UK Exam Boards',
-      description: 'AQA, Edexcel, OCR, WJEC, CCEA, SQA - every major exam board covered. International exams coming soon!',
+      description: 'AQA, Edexcel, OCR, WJEC, CCEA, SQA - every major exam board covered. International exams support expanding!',
       accent: 'pink'
     }
   ];
 
   return (
     <>
-      {/* FAQ Schema for Google Rich Results */}
+      {/* Schema Markup for Google Rich Results */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
@@ -138,10 +173,13 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(mobileAppSchema) }}
+      />
       
       <Navigation />
       <LaunchBanner />
-      <AndroidBetaPopup />
       <main className={styles.main}>
       {/* Hero Section */}
       <section className={styles.hero}>
@@ -177,16 +215,16 @@ export default function Home() {
             </p>
             
             <div className={styles.ctaButtons}>
-              <ComingSoonButton variant="primary" className={styles.btn}>
-                ⚡ Get Pro free for 30 days
-              </ComingSoonButton>
+              <DownloadButton variant="primary" className={styles.btn}>
+                ⚡ Download Free App
+              </DownloadButton>
               <a href="#features" className={`${styles.btn} ${styles.btnSecondary}`}>
                 See How It Works →
               </a>
             </div>
 
-            <div style={{ marginTop: '1.25rem' }}>
-              <StoreBadges note="Apps launching February 2026 (download links coming soon)" />
+            <div id="download-apps" style={{ marginTop: '1.25rem' }}>
+              <StoreBadges note="Get Pro free for 30 days • No credit card required" />
             </div>
             
             <div className={styles.trustBadges}>
@@ -416,9 +454,9 @@ export default function Home() {
           </div>
           
           <div className={styles.ctaCenter}>
-            <ComingSoonButton variant="primary" className={styles.btn}>
-              Start Learning Free →
-            </ComingSoonButton>
+            <DownloadButton variant="primary" className={styles.btn}>
+              Download Free App →
+            </DownloadButton>
           </div>
         </div>
       </section>
@@ -447,9 +485,9 @@ export default function Home() {
                 <li>✓ AI card generation + voice analysis</li>
                 <li>✓ Advanced analytics</li>
               </ul>
-              <ComingSoonButton variant="primary" className={styles.btn}>
+              <DownloadButton variant="primary" className={styles.btn}>
                 Get Pro free for 30 days
-              </ComingSoonButton>
+              </DownloadButton>
               <p className={styles.smallNote}>No credit card required to start.</p>
             </div>
 
@@ -540,7 +578,7 @@ export default function Home() {
             
             <div className={styles.faqItem}>
               <h3>What exam boards are supported?</h3>
-              <p>All major UK exam boards: AQA, Edexcel, OCR, WJEC, CCEA, and SQA for both GCSE and A-Level. International exams (IB, iGCSE) coming soon!</p>
+              <p>All major UK exam boards: AQA, Edexcel, OCR, WJEC, CCEA, and SQA for both GCSE and A-Level. International exams (IB, iGCSE) support expanding soon!</p>
             </div>
             
             <div className={styles.faqItem}>
@@ -577,9 +615,9 @@ export default function Home() {
             Join 10,000+ students already using FL4SH to study smarter, not harder
           </p>
           <div className={styles.ctaButtons}>
-            <ComingSoonButton variant="primary" className={`${styles.btn} ${styles.btnLarge}`}>
-              Get Started Free →
-            </ComingSoonButton>
+            <DownloadButton variant="primary" className={`${styles.btn} ${styles.btnLarge}`}>
+              Download Free App →
+            </DownloadButton>
           </div>
           <p className={styles.finalCtaNote}>
             <span className={styles.neonText}>✓</span> No credit card required • 
@@ -607,8 +645,8 @@ export default function Home() {
               </div>
               <div>
                 <h4>Download</h4>
-                <a href="/download">iOS App (Feb 2026)</a>
-                <a href="/download">Android App (Feb 2026)</a>
+                <a href="https://apps.apple.com/in/app/fl4sh-study-smarter/id6747457678" target="_blank" rel="noopener noreferrer">Download iOS App</a>
+                <a href="https://play.google.com/store/apps/details?id=com.foursighteducation.flash" target="_blank" rel="noopener noreferrer">Download Android App</a>
                 <a href="/support">Support</a>
               </div>
               <div>

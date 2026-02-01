@@ -153,10 +153,28 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.55,
     },
     {
-      url: 'https://www.fl4shcards.com/android-beta-testers',
+      url: 'https://www.fl4shcards.com/schools',
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.65,
+    },
+    {
+      url: 'https://www.fl4shcards.com/parents',
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.6,
+    },
+    {
+      url: 'https://www.fl4shcards.com/support',
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    {
+      url: 'https://www.fl4shcards.com/contact',
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.4,
     },
     {
       url: 'https://www.fl4shcards.com/privacy',
