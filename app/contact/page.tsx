@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import Navigation from '../components/Navigation'
 import styles from './contact.module.css'
+import { useTurnstile } from '../lib/turnstileClient'
+import TurnstileFallbackBox from '../components/TurnstileFallbackBox'
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -11,9 +13,15 @@ export default function Contact() {
     subject: '',
     message: ''
   })
+  const [website, setWebsite] = useState('')
+  const [formStartedAt, setFormStartedAt] = useState(() => Date.now())
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
+  const { blocked, fallbackVisible, invisibleRef, fallbackRef, getToken, reset } = useTurnstile({
+    siteKey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || process.env.TURNSTILE_SITE_KEY,
+    action: 'contact_form',
+  })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -24,14 +32,25 @@ export default function Contact() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (loading) return
     setLoading(true)
     setError('')
 
     try {
+      const turnstileToken = await getToken()
+      if (!turnstileToken) {
+        setError(
+          blocked
+            ? 'Spam protection is blocked on this network. Please email us at admin@4sighteducation.com.'
+            : 'Please complete the spam check below, then submit again.'
+        )
+        return
+      }
+
       const response = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, turnstileToken, website, formStartedAt })
       })
 
       const data = await response.json()
@@ -39,6 +58,9 @@ export default function Contact() {
       if (response.ok) {
         setSubmitted(true)
         setFormData({ name: '', email: '', subject: '', message: '' })
+        setWebsite('')
+        setFormStartedAt(Date.now())
+        reset()
       } else {
         setError(data.error || 'Failed to send message')
       }
@@ -65,7 +87,10 @@ export default function Contact() {
               <h2>Message Sent!</h2>
               <p>Thanks for reaching out. We'll get back to you within 24 hours.</p>
               <button 
-                onClick={() => setSubmitted(false)} 
+                onClick={() => {
+                  setSubmitted(false)
+                  setFormStartedAt(Date.now())
+                }}
                 className={styles.btnSecondary}
               >
                 Send Another Message
@@ -74,6 +99,19 @@ export default function Contact() {
           ) : (
             <div className={styles.formContainer}>
               <form onSubmit={handleSubmit} className={styles.form}>
+                <div style={{ position: 'absolute', left: '-9999px', height: 0, overflow: 'hidden' }} aria-hidden="true">
+                  <label>
+                    Website
+                    <input
+                      type="text"
+                      name="website"
+                      value={website}
+                      onChange={(e) => setWebsite(e.target.value)}
+                      tabIndex={-1}
+                      autoComplete="off"
+                    />
+                  </label>
+                </div>
                 <div className={styles.formGroup}>
                   <label htmlFor="name">Name</label>
                   <input
@@ -126,6 +164,14 @@ export default function Contact() {
                 </div>
 
                 {error && <p className={styles.error}>{error}</p>}
+                <TurnstileFallbackBox
+                  blocked={blocked}
+                  fallbackVisible={fallbackVisible}
+                  invisibleRef={invisibleRef}
+                  fallbackRef={fallbackRef}
+                  mailto="admin@4sighteducation.com"
+                  contactLabel="email us"
+                />
 
                 <button 
                   type="submit" 

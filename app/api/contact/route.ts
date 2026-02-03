@@ -1,8 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isAllowedOrigin, validateHoneypotAndTiming, verifyTurnstileToken } from '../../../lib/server/turnstile';
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, subject, message } = await request.json();
+    const { name, email, subject, message, turnstileToken, website, formStartedAt } = await request.json();
+
+    if (!isAllowedOrigin(request)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const timingError = validateHoneypotAndTiming({ website, formStartedAt: Number(formStartedAt) });
+    if (timingError) {
+      return NextResponse.json({ error: timingError }, { status: 403 });
+    }
+
+    if (!turnstileToken) {
+      return NextResponse.json({ error: 'Verification failed' }, { status: 403 });
+    }
+
+    const verify = await verifyTurnstileToken({
+      token: String(turnstileToken),
+      ip: request.headers.get('x-forwarded-for'),
+    });
+
+    if (!verify?.success) {
+      return NextResponse.json({ error: 'Verification failed' }, { status: 403 });
+    }
 
     if (!name || !email || !message) {
       return NextResponse.json(

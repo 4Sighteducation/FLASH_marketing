@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '../../../lib/server/adminApi';
+import { isAllowedOrigin, validateHoneypotAndTiming, verifyTurnstileToken } from '../../../lib/server/turnstile';
 
 function looksLikeEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
@@ -44,6 +45,31 @@ async function sendSendGridEmail(params: { to: string; subject: string; html: st
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
+    const turnstileToken = body?.turnstileToken;
+    const website = body?.website;
+    const formStartedAt = body?.formStartedAt;
+
+    if (!isAllowedOrigin(request)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const timingError = validateHoneypotAndTiming({ website, formStartedAt: Number(formStartedAt) });
+    if (timingError) {
+      return NextResponse.json({ error: timingError }, { status: 403 });
+    }
+
+    if (!turnstileToken) {
+      return NextResponse.json({ error: 'Verification failed' }, { status: 403 });
+    }
+
+    const verify = await verifyTurnstileToken({
+      token: String(turnstileToken),
+      ip: request.headers.get('x-forwarded-for'),
+    });
+
+    if (!verify?.success) {
+      return NextResponse.json({ error: 'Verification failed' }, { status: 403 });
+    }
     const survey_key = String(body?.survey_key || '').trim();
     const answers = body?.answers || {};
 

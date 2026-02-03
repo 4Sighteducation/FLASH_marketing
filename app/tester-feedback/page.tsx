@@ -2,6 +2,8 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { useTurnstile } from '../lib/turnstileClient';
+import TurnstileFallbackBox from '../components/TurnstileFallbackBox';
 
 import { SURVEY_KEY, sections, type Question, type QuestionType, type Section } from '../../lib/surveys/testerFeedbackV1';
 
@@ -237,6 +239,12 @@ export default function TesterFeedbackPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<{ id: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [website, setWebsite] = useState('');
+  const [formStartedAt, setFormStartedAt] = useState(() => Date.now());
+  const { blocked, fallbackVisible, invisibleRef, fallbackRef, getToken, reset } = useTurnstile({
+    siteKey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || process.env.TURNSTILE_SITE_KEY,
+    action: 'tester_feedback',
+  });
 
   const current = sections[step]!;
   const totalSteps = sections.length;
@@ -288,14 +296,27 @@ export default function TesterFeedbackPage() {
     setSubmitting(true);
     setError(null);
     try {
+      const turnstileToken = await getToken();
+      if (!turnstileToken) {
+        setError(
+          blocked
+            ? 'Spam protection is blocked on this network. Please email us at support@fl4shcards.com.'
+            : 'Please complete the spam check below, then submit again.'
+        );
+        return;
+      }
+
       const res = await fetch('/api/tester-feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ survey_key: SURVEY_KEY, answers }),
+        body: JSON.stringify({ survey_key: SURVEY_KEY, answers, turnstileToken, website, formStartedAt }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || 'Failed to submit');
       setSuccess({ id: json?.id });
+      setWebsite('');
+      setFormStartedAt(Date.now());
+      reset();
     } catch (e: any) {
       setError(String(e?.message || e));
     } finally {
@@ -365,6 +386,20 @@ export default function TesterFeedbackPage() {
             <div style={{ fontWeight: 900, color: '#FF4FD8' }}>{error}</div>
           </div>
         ) : null}
+
+        <div style={{ position: 'absolute', left: '-9999px', height: 0, overflow: 'hidden' }} aria-hidden="true">
+          <label>
+            Website
+            <input
+              type="text"
+              name="website"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+            />
+          </label>
+        </div>
 
         {current.questions.map((q) => {
           if (q.id === 'participant_email' && answers.claim_voucher !== true) return null;
@@ -541,6 +576,16 @@ export default function TesterFeedbackPage() {
             </div>
           );
         })}
+
+        <TurnstileFallbackBox
+          blocked={blocked}
+          fallbackVisible={fallbackVisible}
+          invisibleRef={invisibleRef}
+          fallbackRef={fallbackRef}
+          mailto="support@fl4shcards.com"
+          contactLabel="email us"
+          contextLabel="spam protection"
+        />
 
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 6 }}>
           <button

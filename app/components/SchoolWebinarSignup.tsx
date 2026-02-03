@@ -3,6 +3,8 @@
 import Image from 'next/image'
 import { useState } from 'react'
 import styles from './SchoolWebinarSignup.module.css'
+import { useTurnstile } from '../lib/turnstileClient'
+import TurnstileFallbackBox from './TurnstileFallbackBox'
 
 type FormState = {
   name: string
@@ -18,9 +20,15 @@ export default function SchoolWebinarSignup() {
     role: '',
     establishment: '',
   })
+  const [website, setWebsite] = useState('')
+  const [formStartedAt, setFormStartedAt] = useState(() => Date.now())
   const [loading, setLoading] = useState(false)
   const [ok, setOk] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const { blocked, fallbackVisible, invisibleRef, fallbackRef, getToken, reset } = useTurnstile({
+    siteKey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || process.env.TURNSTILE_SITE_KEY,
+    action: 'schools_webinar',
+  })
 
   const onChange =
     (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,15 +37,26 @@ export default function SchoolWebinarSignup() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (loading) return
     setLoading(true)
     setOk(null)
     setErr(null)
 
     try {
+      const turnstileToken = await getToken()
+      if (!turnstileToken) {
+        setErr(
+          blocked
+            ? 'Spam protection is blocked on this network. Please email us at support@fl4shcards.com.'
+            : 'Please complete the spam check below, then submit again.'
+        )
+        return
+      }
+
       const res = await fetch('/api/schools/webinar-signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, turnstileToken, website, formStartedAt }),
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json?.error || 'Something went wrong')
@@ -48,6 +67,9 @@ export default function SchoolWebinarSignup() {
           : 'You’re registered — check your inbox for the booking link.'
       )
       setForm({ name: '', email: '', role: '', establishment: '' })
+      setWebsite('')
+      setFormStartedAt(Date.now())
+      reset()
     } catch (e: any) {
       setErr(String(e?.message || 'Failed to submit. Please try again.'))
     } finally {
@@ -80,6 +102,19 @@ export default function SchoolWebinarSignup() {
         </div>
 
         <form onSubmit={onSubmit}>
+          <div style={{ position: 'absolute', left: '-9999px', height: 0, overflow: 'hidden' }} aria-hidden="true">
+            <label>
+              Website
+              <input
+                type="text"
+                name="website"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+              />
+            </label>
+          </div>
           <div className={styles.grid}>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="school-name">
@@ -146,6 +181,15 @@ export default function SchoolWebinarSignup() {
           </div>
 
           <div className={styles.actions}>
+            <TurnstileFallbackBox
+              blocked={blocked}
+              fallbackVisible={fallbackVisible}
+              invisibleRef={invisibleRef}
+              fallbackRef={fallbackRef}
+              mailto="support@fl4shcards.com"
+              contactLabel="email us"
+              contextLabel="spam protection"
+            />
             <button className={styles.button} type="submit" disabled={loading}>
               {loading ? 'Registering…' : 'Get the free webinar booking link →'}
             </button>

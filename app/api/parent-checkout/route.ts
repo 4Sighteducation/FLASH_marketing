@@ -1,8 +1,34 @@
 import { NextResponse } from 'next/server';
+import { isAllowedOrigin, validateHoneypotAndTiming, verifyTurnstileToken } from '../../../lib/server/turnstile';
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const turnstileToken = body?.turnstileToken;
+    const website = body?.website;
+    const formStartedAt = body?.formStartedAt;
+
+    if (!isAllowedOrigin(req)) {
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+    }
+
+    const timingError = validateHoneypotAndTiming({ website, formStartedAt: Number(formStartedAt) });
+    if (timingError) {
+      return NextResponse.json({ ok: false, error: timingError }, { status: 403 });
+    }
+
+    if (!turnstileToken) {
+      return NextResponse.json({ ok: false, error: 'Verification failed' }, { status: 403 });
+    }
+
+    const verify = await verifyTurnstileToken({
+      token: String(turnstileToken),
+      ip: req.headers.get('x-forwarded-for'),
+    });
+
+    if (!verify?.success) {
+      return NextResponse.json({ ok: false, error: 'Verification failed' }, { status: 403 });
+    }
     const childEmail = String(body?.childEmail || '').trim();
     if (!childEmail) {
       return NextResponse.json({ ok: false, error: 'Missing childEmail' }, { status: 400 });

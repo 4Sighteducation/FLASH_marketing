@@ -2,12 +2,20 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useTurnstile } from '../lib/turnstileClient';
+import TurnstileFallbackBox from '../components/TurnstileFallbackBox';
 
 function ParentsPageInner() {
   const searchParams = useSearchParams();
   const [childEmail, setChildEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [website, setWebsite] = useState('');
+  const [formStartedAt, setFormStartedAt] = useState(() => Date.now());
+  const { blocked, fallbackVisible, invisibleRef, fallbackRef, getToken, reset } = useTurnstile({
+    siteKey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || process.env.TURNSTILE_SITE_KEY,
+    action: 'parent_checkout',
+  });
 
   const canSubmit = useMemo(() => childEmail.trim().length > 3 && childEmail.includes('@'), [childEmail]);
 
@@ -24,16 +32,27 @@ function ParentsPageInner() {
     setError(null);
 
     try {
+      const turnstileToken = await getToken();
+      if (!turnstileToken) {
+        setError(
+          blocked
+            ? 'Spam protection is blocked on this network. Please email us at support@fl4shcards.com.'
+            : 'Please complete the spam check below, then submit again.'
+        );
+        return;
+      }
+
       const res = await fetch('/api/parent-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ childEmail }),
+        body: JSON.stringify({ childEmail, turnstileToken, website, formStartedAt }),
       });
       const json = await res.json();
       if (!res.ok || !json?.url) {
         setError(json?.error || 'Could not start checkout.');
         return;
       }
+      reset();
       window.location.href = json.url;
     } catch (err: any) {
       setError(err?.message || 'Could not start checkout.');
@@ -54,6 +73,19 @@ function ParentsPageInner() {
         <p style={{ margin: '6px 0 18px 0', opacity: 0.85 }}>£39.99 / year (2 months free)</p>
 
         <form onSubmit={onSubmit} style={{ display: 'grid', gap: 12 }}>
+          <div style={{ position: 'absolute', left: '-9999px', height: 0, overflow: 'hidden' }} aria-hidden="true">
+            <label>
+              Website
+              <input
+                type="text"
+                name="website"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+              />
+            </label>
+          </div>
           <label style={{ display: 'grid', gap: 6 }}>
             <span>Child’s email address</span>
             <input
@@ -74,6 +106,15 @@ function ParentsPageInner() {
           </label>
 
           {error ? <div style={{ color: '#ffb4b4', fontSize: 14 }}>{error}</div> : null}
+          <TurnstileFallbackBox
+            blocked={blocked}
+            fallbackVisible={fallbackVisible}
+            invisibleRef={invisibleRef}
+            fallbackRef={fallbackRef}
+            mailto="support@fl4shcards.com"
+            contactLabel="email us"
+            contextLabel="spam protection"
+          />
 
           <button
             type="submit"

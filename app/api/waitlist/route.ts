@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isAllowedOrigin, validateHoneypotAndTiming, verifyTurnstileToken } from '../../../lib/server/turnstile';
 
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -10,7 +11,29 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, source } = await request.json();
+    const { email, source, turnstileToken, website, formStartedAt } = await request.json();
+
+    if (!isAllowedOrigin(request)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const timingError = validateHoneypotAndTiming({ website, formStartedAt: Number(formStartedAt) });
+    if (timingError) {
+      return NextResponse.json({ error: timingError }, { status: 403 });
+    }
+
+    if (!turnstileToken) {
+      return NextResponse.json({ error: 'Verification failed' }, { status: 403 });
+    }
+
+    const verify = await verifyTurnstileToken({
+      token: String(turnstileToken),
+      ip: request.headers.get('x-forwarded-for'),
+    });
+
+    if (!verify?.success) {
+      return NextResponse.json({ error: 'Verification failed' }, { status: 403 });
+    }
 
     if (!email || !email.includes('@')) {
       return NextResponse.json(
