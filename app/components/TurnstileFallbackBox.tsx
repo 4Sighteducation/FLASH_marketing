@@ -25,7 +25,21 @@ export default function TurnstileFallbackBox({
 
   return (
     <>
-      <div ref={invisibleRef} style={{ display: 'none' }} />
+      {/* Hidden "auto" widget container: must be in DOM (not display:none) */}
+      <div
+        ref={invisibleRef}
+        style={{
+          position: 'absolute',
+          left: -10000,
+          top: 0,
+          width: 1,
+          height: 1,
+          overflow: 'hidden',
+          opacity: 0,
+          pointerEvents: 'none',
+        }}
+        aria-hidden="true"
+      />
       {showBox ? (
         <div
           style={{

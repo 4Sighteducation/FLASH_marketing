@@ -27,11 +27,7 @@ export default function AndroidBetaTestersPage() {
     try {
       const turnstileToken = await getToken()
       if (!turnstileToken) {
-        setError(
-          blocked
-            ? 'Spam protection is blocked on this network. Please email us at support@fl4shcards.com.'
-            : 'Please complete the spam check below, then submit again.'
-        )
+        if (blocked) setError('Spam protection is blocked on this network. Please email us at support@fl4shcards.com.')
         return
       }
 

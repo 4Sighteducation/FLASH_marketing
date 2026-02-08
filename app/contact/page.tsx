@@ -39,11 +39,7 @@ export default function Contact() {
     try {
       const turnstileToken = await getToken()
       if (!turnstileToken) {
-        setError(
-          blocked
-            ? 'Spam protection is blocked on this network. Please email us at admin@4sighteducation.com.'
-            : 'Please complete the spam check below, then submit again.'
-        )
+        if (blocked) setError('Spam protection is blocked on this network. Please email us at admin@4sighteducation.com.')
         return
       }
 

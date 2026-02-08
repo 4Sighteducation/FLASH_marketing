@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
 
 type Turnstile = {
   render: (element: HTMLElement, options: Record<string, any>) => string
@@ -68,6 +68,7 @@ export function useTurnstile(options: { siteKey?: string; action?: string; cdata
 
   const invisibleResolveRef = useRef<(token: string | null) => void>(() => undefined)
   const fallbackResolveRef = useRef<(token: string | null) => void>(() => undefined)
+  const executingRef = useRef(false)
 
   useEffect(() => {
     setFallbackVisible(false)
@@ -75,8 +76,108 @@ export function useTurnstile(options: { siteKey?: string; action?: string; cdata
     setFallbackToken(null)
   }, [options.siteKey])
 
+  const canRun = useMemo(() => !!options.siteKey, [options.siteKey])
+
+  const ensureScript = useCallback(async () => {
+    if (!canRun) return false
+    const loaded = await loadTurnstileScript()
+    if (!loaded || !window.turnstile) {
+      setBlocked(true)
+      return false
+    }
+    return true
+  }, [canRun])
+
+  const ensureInvisibleWidget = useCallback(async () => {
+    const ok = await ensureScript()
+    if (!ok || !window.turnstile) return false
+    const turnstile = window.turnstile
+
+    if (!invisibleRef.current) return false
+
+    if (!invisibleWidgetIdRef.current) {
+      try {
+        invisibleWidgetIdRef.current = turnstile.render(invisibleRef.current, {
+          sitekey: options.siteKey,
+          size: 'normal',
+          execution: 'execute',
+          action: options.action,
+          cdata: options.cdata,
+          callback: (token: string) => invisibleResolveRef.current(token || null),
+          'error-callback': () => invisibleResolveRef.current(null),
+          'expired-callback': () => invisibleResolveRef.current(null),
+        })
+      } catch {
+        setBlocked(true)
+        return false
+      }
+    } else {
+      try {
+        turnstile.reset(invisibleWidgetIdRef.current)
+      } catch {
+        // ignore reset errors
+      }
+    }
+
+    return true
+  }, [ensureScript, options.action, options.cdata, options.siteKey])
+
+  const ensureFallbackWidget = useCallback(async () => {
+    const ok = await ensureScript()
+    if (!ok || !window.turnstile) return false
+    const turnstile = window.turnstile
+
+    if (!fallbackRef.current) return false
+
+    if (!fallbackWidgetIdRef.current) {
+      try {
+        fallbackWidgetIdRef.current = turnstile.render(fallbackRef.current, {
+          sitekey: options.siteKey,
+          size: 'normal',
+          action: options.action,
+          cdata: options.cdata,
+          callback: (token: string) => {
+            const resolved = token || null
+            setFallbackToken(resolved)
+            fallbackResolveRef.current(resolved)
+          },
+          'error-callback': () => fallbackResolveRef.current(null),
+          'expired-callback': () => fallbackResolveRef.current(null),
+        })
+      } catch {
+        setBlocked(true)
+        return false
+      }
+
+      // If the container stays empty, assume it was blocked.
+      window.setTimeout(() => {
+        if (fallbackRef.current && fallbackRef.current.childElementCount === 0) {
+          setBlocked(true)
+        }
+      }, 1200)
+    } else {
+      try {
+        turnstile.reset(fallbackWidgetIdRef.current)
+      } catch {
+        // ignore reset errors
+      }
+    }
+
+    return true
+  }, [ensureScript, options.action, options.cdata, options.siteKey])
+
+  // As soon as we decide to show fallback, actually render it (no "dead" UI).
+  useEffect(() => {
+    if (!fallbackVisible) return
+    if (blocked) return
+    void ensureFallbackWidget()
+  }, [blocked, ensureFallbackWidget, fallbackVisible])
+
   const getToken = useCallback(async () => {
-    if (!options.siteKey) return null
+    if (!options.siteKey) {
+      setBlocked(true)
+      return null
+    }
 
     if (fallbackToken) {
       const token = fallbackToken
@@ -91,61 +192,39 @@ export function useTurnstile(options: { siteKey?: string; action?: string; cdata
       return token
     }
 
-    const loaded = await loadTurnstileScript()
-    if (!loaded || !window.turnstile) {
+    // If fallback is visible, the user must complete it; don't keep trying auto.
+    if (fallbackVisible) {
+      await ensureFallbackWidget()
+      return null
+    }
+
+    const ready = await ensureInvisibleWidget()
+    if (!ready || !window.turnstile || !invisibleWidgetIdRef.current) {
       setBlocked(true)
       return null
     }
 
-    const turnstile = window.turnstile
-    if (!invisibleWidgetIdRef.current && invisibleRef.current) {
-      invisibleWidgetIdRef.current = turnstile.render(invisibleRef.current, {
-        sitekey: options.siteKey,
-        size: 'normal',
-        execution: 'execute',
-        action: options.action,
-        cdata: options.cdata,
-        callback: (token: string) => invisibleResolveRef.current(token || null),
-        'error-callback': () => invisibleResolveRef.current(null),
-        'expired-callback': () => invisibleResolveRef.current(null),
-      })
-    } else if (invisibleWidgetIdRef.current) {
+    if (executingRef.current) return null
+    executingRef.current = true
+    try {
       try {
-        turnstile.reset(invisibleWidgetIdRef.current)
+        window.turnstile.execute(invisibleWidgetIdRef.current)
       } catch {
-        // ignore reset errors
+        // ignore execute errors
       }
-    }
 
-    const invisibleToken = invisibleWidgetIdRef.current
-      ? await waitForToken(1500, invisibleResolveRef)
-      : null
+      const invisibleToken = await waitForToken(2500, invisibleResolveRef)
+      if (invisibleToken) return invisibleToken
 
-    if (invisibleToken) return invisibleToken
-
-    setFallbackVisible(true)
-
-    if (!fallbackRef.current) return null
-    if (!fallbackWidgetIdRef.current) {
-      fallbackWidgetIdRef.current = turnstile.render(fallbackRef.current, {
-        sitekey: options.siteKey,
-        size: 'normal',
-        action: options.action,
-        cdata: options.cdata,
-        callback: (token: string) => {
-          const resolved = token || null
-          setFallbackToken(resolved)
-          fallbackResolveRef.current(resolved)
-        },
-        'error-callback': () => fallbackResolveRef.current(null),
-        'expired-callback': () => fallbackResolveRef.current(null),
-      })
-    } else {
-      turnstile.reset(fallbackWidgetIdRef.current)
+      setFallbackVisible(true)
+      await ensureFallbackWidget()
+      return null
+    } finally {
+      executingRef.current = false
     }
 
     return null
-  }, [fallbackToken, options.action, options.cdata, options.siteKey])
+  }, [ensureFallbackWidget, ensureInvisibleWidget, fallbackToken, fallbackVisible, options.siteKey])
 
   const reset = useCallback(() => {
     setFallbackVisible(false)
