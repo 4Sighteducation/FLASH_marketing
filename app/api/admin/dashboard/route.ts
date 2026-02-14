@@ -29,12 +29,34 @@ export async function GET(request: NextRequest) {
 
     // Active in last 7 days (best-effort; project currently small)
     const since = ymd(addDays(new Date(), -6));
-    const { data: activeRows } = await supabase
-      .from('user_daily_study_stats_mv')
-      .select('user_id,study_date')
-      .gte('study_date', since)
-      .limit(100000);
-    const active7dUserIds = new Set((activeRows || []).map((r: any) => String(r.user_id || '')).filter(Boolean));
+    let active7dUserIds = new Set<string>();
+    {
+      const mvRes = await supabase
+        .from('user_daily_study_stats_mv')
+        .select('user_id,study_date')
+        .gte('study_date', since)
+        .limit(100000);
+      const activeRows = (mvRes as any)?.data || [];
+      active7dUserIds = new Set((activeRows || []).map((r: any) => String(r.user_id || '')).filter(Boolean));
+
+      // Fallback: derive activity directly from card_reviews when MV is empty/missing.
+      if (active7dUserIds.size === 0) {
+        const sinceTs = new Date();
+        sinceTs.setHours(0, 0, 0, 0);
+        sinceTs.setDate(sinceTs.getDate() - 6);
+        const { data: reviewRows, error: reviewErr } = await supabase
+          .from('card_reviews')
+          .select('user_id,reviewed_at')
+          .gte('reviewed_at', sinceTs.toISOString())
+          .limit(200000);
+        if (!reviewErr && Array.isArray(reviewRows)) {
+          for (const r of reviewRows as any[]) {
+            const uid = String((r as any)?.user_id || '');
+            if (uid) active7dUserIds.add(uid);
+          }
+        }
+      }
+    }
 
     // Pro/Premium counts (beta_access overrides are the primary mechanism; include user_subscriptions if present)
     const { data: betas } = await supabase.from('beta_access').select('user_id,tier').limit(100000);
@@ -97,7 +119,17 @@ export async function POST(request: NextRequest) {
 
     const supabase = getServiceClient();
     const { error } = await (supabase as any).rpc('refresh_user_daily_study_stats_mv', {});
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    // If the RPC doesn't exist (or MV isn't installed), don't hard-fail the dashboard.
+    // The API routes can fall back to live card_reviews computations.
+    if (error) {
+      const msg = String(error.message || '');
+      const looksLikeMissing =
+        msg.toLowerCase().includes('does not exist') ||
+        msg.toLowerCase().includes('not found') ||
+        msg.toLowerCase().includes('schema cache');
+      if (!looksLikeMissing) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true, warning: error.message });
+    }
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     const msg = typeof e?.message === 'string' ? e.message : 'Unauthorized';

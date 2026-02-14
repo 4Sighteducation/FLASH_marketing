@@ -18,6 +18,7 @@ type LastSeenRow = {
   country: string | null;
 };
 type DailyStudyRow = { user_id: string; study_date: string; reviews_total: number };
+type CardReviewRow = { user_id: string; reviewed_at: string };
 
 function norm(s: any): string {
   return String(s || '').trim().toLowerCase();
@@ -41,6 +42,12 @@ function addDays(d: Date, deltaDays: number): Date {
   const x = new Date(d);
   x.setDate(x.getDate() + deltaDays);
   return x;
+}
+
+function ymdFromIso(iso: string): string | null {
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return null;
+  return new Date(ms).toISOString().slice(0, 10);
 }
 
 export async function GET(request: NextRequest) {
@@ -152,14 +159,46 @@ export async function GET(request: NextRequest) {
       // Engagement: reviews in last 7 days + streak + last study date (from MV)
       const today = new Date();
       const since = ymd(addDays(today, -6));
-      const { data: dailyRows } = await supabase
+      const dailyRes = await supabase
         .from('user_daily_study_stats_mv')
         .select('user_id,study_date,reviews_total')
         .in('user_id', ids)
         .gte('study_date', since)
         .limit(10000);
+      let dailyRows = (dailyRes as any)?.data || [];
 
-      // Build per-user date sets + totals
+      // If MV is missing/stale, fall back to live card_reviews.
+      // (MVs don't auto-refresh; many dashboards appear empty until refreshed.)
+      if (!Array.isArray(dailyRows) || dailyRows.length === 0) {
+        const sinceTs = new Date();
+        sinceTs.setHours(0, 0, 0, 0);
+        sinceTs.setDate(sinceTs.getDate() - 6);
+        const { data: reviewRows, error: reviewsErr } = await supabase
+          .from('card_reviews')
+          .select('user_id,reviewed_at')
+          .in('user_id', ids)
+          .gte('reviewed_at', sinceTs.toISOString())
+          .limit(200000);
+
+        if (!reviewsErr && Array.isArray(reviewRows) && reviewRows.length > 0) {
+          const tmp: DailyStudyRow[] = [];
+          const counts = new Map<string, Map<string, number>>();
+          for (const r of reviewRows as unknown as CardReviewRow[]) {
+            const uid = String((r as any).user_id || '');
+            const d = ymdFromIso(String((r as any).reviewed_at || ''));
+            if (!uid || !d) continue;
+            const byDate = counts.get(uid) || new Map<string, number>();
+            byDate.set(d, (byDate.get(d) || 0) + 1);
+            counts.set(uid, byDate);
+          }
+          counts.forEach((byDate, uid) => {
+            byDate.forEach((n, d) => tmp.push({ user_id: uid, study_date: d, reviews_total: n }));
+          });
+          dailyRows = tmp;
+        }
+      }
+
+      // Build per-user date sets + totals (from MV or fallback rows)
       const datesByUser = new Map<string, Set<string>>();
       for (const r of (dailyRows || []) as unknown as DailyStudyRow[]) {
         const uid = String((r as any).user_id || '');

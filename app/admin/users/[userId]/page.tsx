@@ -126,7 +126,7 @@ export default function UserDetailPage({ params }: { params: { userId: string } 
             {(data.engagement_last_30d || []).length === 0 ? (
               <tr>
                 <td style={{ padding: 12, color: '#94A3B8' }} colSpan={4}>
-                  No study activity yet.
+                  No study activity yet. (Creating cards doesn’t count — this user has {data.activation?.cards_count ?? 0} cards.)
                 </td>
               </tr>
             ) : null}
