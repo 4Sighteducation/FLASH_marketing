@@ -166,16 +166,24 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
     const profile = profileRes.data || null;
 
     // Be defensive: some environments may not have all subscription columns yet.
-    // If the wide select fails, retry with a minimal select.
-    let sub = subRes.data || null;
+    // Also: keep these as `any` so fallback selects don't break the build (Vercel runs strict type-checking).
+    let sub: any = subRes.data || null;
     if (!sub && (subRes as any)?.error) {
-      const { data: retry } = await supabase.from('user_subscriptions').select('user_id,tier,expires_at,source').eq('user_id', userId).maybeSingle();
+      const { data: retry } = await supabase
+        .from('user_subscriptions')
+        .select('user_id,tier,expires_at,source')
+        .eq('user_id', userId)
+        .maybeSingle();
       sub = retry || null;
     }
 
-    let beta = betaRes.data || null;
+    let beta: any = betaRes.data || null;
     if (!beta && (betaRes as any)?.error) {
-      const { data: retry } = await supabase.from('beta_access').select('user_id,tier,expires_at,note,updated_at').eq('user_id', userId).maybeSingle();
+      const { data: retry } = await supabase
+        .from('beta_access')
+        .select('user_id,tier,expires_at,note,updated_at')
+        .eq('user_id', userId)
+        .maybeSingle();
       beta = retry || null;
     }
 
