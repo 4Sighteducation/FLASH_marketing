@@ -11,6 +11,47 @@ function addDays(d: Date, deltaDays: number): Date {
   return x;
 }
 
+function msFromIso(iso?: string | null): number | null {
+  if (!iso) return null;
+  const ms = Date.parse(String(iso));
+  return Number.isFinite(ms) ? ms : null;
+}
+
+async function selectUserSubscriptions(supabase: any) {
+  const tries = [
+    'user_id,tier,expires_at,source,platform,purchase_token,purchased_at,started_at,trial_used_at,updated_at',
+    'user_id,tier,expires_at,source,platform,purchase_token,purchased_at,updated_at',
+    'user_id,tier,expires_at,source,updated_at',
+    'user_id,tier,expires_at',
+  ];
+  for (const sel of tries) {
+    const { data, error } = await supabase.from('user_subscriptions').select(sel).limit(100000);
+    if (!error) return data || [];
+  }
+  return [];
+}
+
+function isPaidAppSubscription(sub?: any | null) {
+  if (!sub) return false;
+  const tier = String(sub?.tier || '').toLowerCase();
+  if (tier !== 'pro' && tier !== 'premium') return false;
+  const source = String(sub?.source || '').toLowerCase();
+  if (source === 'trial') return false;
+
+  const platform = String(sub?.platform || '').toLowerCase();
+  const purchaseToken = sub?.purchase_token ? String(sub.purchase_token) : '';
+
+  const expiresAtMs = msFromIso(sub?.expires_at || null);
+  const active = expiresAtMs == null ? true : expiresAtMs > Date.now();
+  if (!active) return false;
+
+  const looksPaid =
+    !!purchaseToken ||
+    (platform && platform !== 'server') ||
+    ['revenuecat', 'iap', 'app_store', 'play_store', 'stripe'].includes(source);
+  return looksPaid;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const token = parseBearerToken(request.headers.get('authorization'));
@@ -92,6 +133,58 @@ export async function GET(request: NextRequest) {
       if (t === 'premium') premiumCount++;
     });
 
+    // Trial stats + paid stats (best-effort)
+    const nowMs = Date.now();
+    const in7Ms = nowMs + 7 * 24 * 60 * 60 * 1000;
+    const in3Ms = nowMs + 3 * 24 * 60 * 60 * 1000;
+
+    // Native trials (source='trial') + legacy bulk trials (beta_access note legacy_pro_trial_...)
+    const trialEndsByUserId = new Map<string, number>();
+
+    // Native trial rows (user_subscriptions)
+    const subsAll = await selectUserSubscriptions(supabase);
+    for (const s of subsAll || []) {
+      const src = String((s as any)?.source || '').toLowerCase();
+      if (src !== 'trial') continue;
+      const uid = String((s as any)?.user_id || '');
+      const expMs = msFromIso((s as any)?.expires_at || null);
+      if (!uid || !expMs) continue;
+      trialEndsByUserId.set(uid, expMs);
+    }
+
+    // Legacy trials (beta_access)
+    const { data: legacyTrials } = await supabase
+      .from('beta_access')
+      .select('user_id,expires_at,note')
+      .like('note', 'legacy_pro_trial_%')
+      .limit(100000);
+    for (const b of legacyTrials || []) {
+      const uid = String((b as any)?.user_id || '');
+      const expMs = msFromIso((b as any)?.expires_at || null);
+      if (!uid || !expMs) continue;
+      trialEndsByUserId.set(uid, expMs);
+    }
+
+    let trialActiveCount = 0;
+    let trialEnding7dCount = 0;
+    let trialEnding3dCount = 0;
+    trialEndsByUserId.forEach((expMs) => {
+      if (expMs > nowMs) {
+        trialActiveCount++;
+        if (expMs <= in7Ms) trialEnding7dCount++;
+        if (expMs <= in3Ms) trialEnding3dCount++;
+      }
+    });
+
+    // Paid active (from user_subscriptions heuristic)
+    let paidAppActiveCount = 0;
+    for (const s of subsAll || []) {
+      if (isPaidAppSubscription(s)) paidAppActiveCount++;
+    }
+
+    const paidShareOfProLike =
+      paidAppActiveCount + trialActiveCount > 0 ? paidAppActiveCount / (paidAppActiveCount + trialActiveCount) : 0;
+
     return NextResponse.json({
       ok: true,
       usersCount: usersCount ?? 0,
@@ -101,6 +194,11 @@ export async function GET(request: NextRequest) {
       premiumCount,
       redeemsCount: redeemsCount ?? 0,
       parentBuysCount: parentBuysCount ?? 0,
+      trialActiveCount,
+      trialEnding7dCount,
+      trialEnding3dCount,
+      paidAppActiveCount,
+      paidShareOfProLike,
     });
   } catch (e: any) {
     const msg = typeof e?.message === 'string' ? e.message : 'Unauthorized';

@@ -8,6 +8,8 @@ type DetailResponse = {
   auth: any | null;
   profile: any | null;
   subscription: { tier: string | null; expires_at: string | null; source: string | null; beta_note?: string | null };
+  trial?: { kind: 'trial' | 'legacy_trial'; ends_at: string; days_left: number; status: 'active' | 'ending_soon' | 'expired' } | null;
+  paid?: { active: boolean } | null;
   device: any | null;
   activation: { subjects_count: number; cards_count: number };
   engagement_last_30d: Array<{
@@ -54,6 +56,8 @@ export default function UserDetailPage({ params }: { params: { userId: string } 
 
   const email = data.auth?.email || data.profile?.email || '(no email)';
   const tier = (data.subscription?.tier || 'free').toLowerCase();
+  const trial = data.trial || null;
+  const trialEnds = trial?.ends_at ? new Date(trial.ends_at) : null;
 
   return (
     <div>
@@ -73,6 +77,14 @@ export default function UserDetailPage({ params }: { params: { userId: string } 
             source: {data.subscription?.source || '—'}
             {data.subscription?.expires_at ? ` • expires ${new Date(data.subscription.expires_at).toLocaleString()}` : ''}
           </span>
+          {trial && trialEnds ? (
+            <span style={{ color: trial.days_left <= 3 ? '#FF006E' : trial.days_left <= 7 ? '#F59E0B' : '#00F5FF', fontSize: 13, fontWeight: 800 }}>
+              • trial left: {trial.days_left <= 0 ? 'expired' : `${trial.days_left}d`} (ends {trialEnds.toLocaleDateString()})
+            </span>
+          ) : null}
+          {data.paid?.active ? (
+            <span style={{ color: '#22C55E', fontSize: 13, fontWeight: 900 }}>• paid (active)</span>
+          ) : null}
         </div>
       </div>
 

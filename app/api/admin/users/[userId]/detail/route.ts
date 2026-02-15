@@ -7,6 +7,53 @@ function ymdFromIso(iso: string): string | null {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
+function msFromIso(iso?: string | null): number | null {
+  if (!iso) return null;
+  const ms = Date.parse(String(iso));
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function computeTrial(params: { sub?: any | null; beta?: any | null }) {
+  const nowMs = Date.now();
+  const betaNote = params.beta?.note ? String(params.beta.note) : '';
+  const isLegacyTrial = betaNote.startsWith('legacy_pro_trial_');
+  const legacyEndsAtMs = msFromIso(params.beta?.expires_at || null);
+  const isNativeTrial = String(params.sub?.source || '') === 'trial';
+  const nativeEndsAtMs = msFromIso(params.sub?.expires_at || null);
+  const endsAtMs = isLegacyTrial ? legacyEndsAtMs : isNativeTrial ? nativeEndsAtMs : null;
+  if (!endsAtMs) return null;
+
+  const msLeft = endsAtMs - nowMs;
+  const daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000));
+  const status = msLeft <= 0 ? 'expired' : daysLeft <= 7 ? 'ending_soon' : 'active';
+  return {
+    kind: isLegacyTrial ? 'legacy_trial' : 'trial',
+    ends_at: new Date(endsAtMs).toISOString(),
+    days_left: daysLeft,
+    status,
+  } as const;
+}
+
+function isPaidAppSubscription(sub?: any | null) {
+  if (!sub) return false;
+  const tier = String(sub?.tier || '').toLowerCase();
+  if (tier !== 'pro' && tier !== 'premium') return false;
+  const source = String(sub?.source || '').toLowerCase();
+  if (source === 'trial') return false;
+
+  const platform = String(sub?.platform || '').toLowerCase();
+  const purchaseToken = sub?.purchase_token ? String(sub.purchase_token) : '';
+  const expiresAtMs = msFromIso(sub?.expires_at || null);
+  const active = expiresAtMs == null ? true : expiresAtMs > Date.now();
+  if (!active) return false;
+
+  const looksPaid =
+    !!purchaseToken ||
+    (platform && platform !== 'server') ||
+    ['revenuecat', 'iap', 'app_store', 'play_store', 'stripe'].includes(source);
+  return looksPaid;
+}
+
 async function computeDailyFromCardReviews(params: {
   supabase: any;
   userId: string;
@@ -100,8 +147,9 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
 
     const [profileRes, subRes, betaRes, seenRes, dailyRes] = await Promise.all([
       supabase.from('users').select('id,email,username,primary_exam_type,secondary_exam_type,created_at').eq('id', userId).maybeSingle(),
-      supabase.from('user_subscriptions').select('user_id,tier,expires_at').eq('user_id', userId).maybeSingle(),
-      supabase.from('beta_access').select('user_id,tier,expires_at,note').eq('user_id', userId).maybeSingle(),
+      // include extra fields if present (for trial/paid detection). If missing, PostgREST will error, so we keep it minimal.
+      supabase.from('user_subscriptions').select('user_id,tier,expires_at,source,platform,purchase_token,purchased_at,started_at,trial_used_at,updated_at').eq('user_id', userId).maybeSingle(),
+      supabase.from('beta_access').select('user_id,tier,expires_at,note,updated_at').eq('user_id', userId).maybeSingle(),
       supabase
         .from('user_last_seen')
         .select('user_id,last_seen_at,platform,app_version,build_version,device_model,os_name,os_version,locale,timezone,country')
@@ -116,8 +164,21 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
     ]);
 
     const profile = profileRes.data || null;
-    const sub = subRes.data || null;
-    const beta = betaRes.data || null;
+
+    // Be defensive: some environments may not have all subscription columns yet.
+    // If the wide select fails, retry with a minimal select.
+    let sub = subRes.data || null;
+    if (!sub && (subRes as any)?.error) {
+      const { data: retry } = await supabase.from('user_subscriptions').select('user_id,tier,expires_at,source').eq('user_id', userId).maybeSingle();
+      sub = retry || null;
+    }
+
+    let beta = betaRes.data || null;
+    if (!beta && (betaRes as any)?.error) {
+      const { data: retry } = await supabase.from('beta_access').select('user_id,tier,expires_at,note,updated_at').eq('user_id', userId).maybeSingle();
+      beta = retry || null;
+    }
+
     const seen = seenRes.data || null;
 
     // Engagement (prefer MV; fallback to live card_reviews when MV is missing/stale)
@@ -125,6 +186,9 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
     if (!Array.isArray(daily) || daily.length === 0) {
       daily = await computeDailyFromCardReviews({ supabase, userId, days: 30 });
     }
+
+    const trial = computeTrial({ sub, beta });
+    const paidActive = isPaidAppSubscription(sub);
 
     // Activation / monetization counts
     const [{ count: subjectsCount }, { count: cardsCount }, { count: redeemsCount }, { count: parentBuysCount }] =
@@ -154,6 +218,8 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
         : null,
       profile: profile || null,
       subscription: { tier: resolvedTier, expires_at: resolvedExpiresAt, source, beta_note: (beta as any)?.note || null },
+      trial,
+      paid: { active: paidActive },
       device: seen || null,
       activation: { subjects_count: subjectsCount ?? 0, cards_count: cardsCount ?? 0 },
       engagement_last_30d: daily || [],

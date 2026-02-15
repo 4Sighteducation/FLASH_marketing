@@ -50,6 +50,105 @@ function ymdFromIso(iso: string): string | null {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
+function msFromIso(iso?: string | null): number | null {
+  if (!iso) return null;
+  const ms = Date.parse(String(iso));
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+async function selectUserSubscriptions(supabase: any, ids: string[]) {
+  const tries = [
+    'user_id,tier,expires_at,source,platform,purchase_token,purchased_at,started_at,trial_used_at,updated_at',
+    'user_id,tier,expires_at,source,platform,purchase_token,purchased_at,updated_at',
+    'user_id,tier,expires_at,source,updated_at',
+    'user_id,tier,expires_at',
+  ];
+  for (const sel of tries) {
+    const { data, error } = await supabase.from('user_subscriptions').select(sel).in('user_id', ids);
+    if (!error) return data || [];
+  }
+  return [];
+}
+
+async function selectBetaAccess(supabase: any, ids: string[]) {
+  const tries = ['user_id,tier,expires_at,note,updated_at', 'user_id,tier,expires_at,note', 'user_id,tier,expires_at'];
+  for (const sel of tries) {
+    const { data, error } = await supabase.from('beta_access').select(sel).in('user_id', ids);
+    if (!error) return data || [];
+  }
+  return [];
+}
+
+function resolveTierAndExpiry(params: {
+  sub?: any | null;
+  beta?: any | null;
+}): { tier: string | null; expires_at: string | null; source: string | null } {
+  const betaTier = params.beta?.tier ? String(params.beta.tier) : null;
+  const betaExp = params.beta?.expires_at ? String(params.beta.expires_at) : null;
+  if (betaTier) return { tier: betaTier, expires_at: betaExp, source: 'beta_access' };
+  const subTier = params.sub?.tier ? String(params.sub.tier) : null;
+  const subExp = params.sub?.expires_at ? String(params.sub.expires_at) : null;
+  const src = params.sub?.source ? String(params.sub.source) : null;
+  return { tier: subTier, expires_at: subExp, source: src ? src : params.sub ? 'user_subscriptions' : null };
+}
+
+function computeTrial(params: { sub?: any | null; beta?: any | null }) {
+  // Trial = either:
+  // - user_subscriptions.source === 'trial' (native 30-day trial), OR
+  // - legacy bulk-grant trial via beta_access (note legacy_pro_trial_...).
+  const nowMs = Date.now();
+
+  const betaNote = params.beta?.note ? String(params.beta.note) : '';
+  const isLegacyTrial = betaNote.startsWith('legacy_pro_trial_');
+  const legacyEndsAtMs = msFromIso(params.beta?.expires_at || null);
+
+  const isNativeTrial = String(params.sub?.source || '') === 'trial';
+  const nativeEndsAtMs = msFromIso(params.sub?.expires_at || null);
+
+  const endsAtMs = isLegacyTrial ? legacyEndsAtMs : isNativeTrial ? nativeEndsAtMs : null;
+  if (!endsAtMs) return null;
+
+  const msLeft = endsAtMs - nowMs;
+  const daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000));
+  const status = msLeft <= 0 ? 'expired' : daysLeft <= 7 ? 'ending_soon' : 'active';
+  return {
+    kind: isLegacyTrial ? 'legacy_trial' : 'trial',
+    ends_at: new Date(endsAtMs).toISOString(),
+    days_left: daysLeft,
+    status,
+  } as const;
+}
+
+function isPaidAppSubscription(sub?: any | null) {
+  if (!sub) return false;
+  const tier = String(sub?.tier || '').toLowerCase();
+  if (tier !== 'pro' && tier !== 'premium') return false;
+  const source = String(sub?.source || '').toLowerCase();
+  if (source === 'trial') return false;
+
+  const platform = String(sub?.platform || '').toLowerCase();
+  const purchaseToken = sub?.purchase_token ? String(sub.purchase_token) : '';
+
+  const expiresAtMs = msFromIso(sub?.expires_at || null);
+  const active = expiresAtMs == null ? true : expiresAtMs > Date.now();
+  if (!active) return false;
+
+  // Best-effort heuristic: "paid app" tends to have a non-server platform or a purchase token,
+  // or a source that indicates IAP billing.
+  const looksPaid =
+    !!purchaseToken ||
+    (platform && platform !== 'server') ||
+    ['revenuecat', 'iap', 'app_store', 'play_store', 'stripe'].includes(source);
+
+  return looksPaid;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const token = parseBearerToken(request.headers.get('authorization'));
@@ -60,6 +159,8 @@ export async function GET(request: NextRequest) {
     const q = norm(url.searchParams.get('q') || '');
     const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '100', 10) || 100, 1), 200);
     const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
+    const plan = norm(url.searchParams.get('plan') || 'all'); // all|trial_active|trial_ending_7d|trial_ending_3d|trial_expired|paid_active
+    const sort = norm(url.searchParams.get('sort') || ''); // trial_ends_asc|trial_ends_desc|signup_desc|signup_asc
 
     const supabase = getServiceClient();
 
@@ -103,7 +204,57 @@ export async function GET(request: NextRequest) {
       if (users.length < perPage) break;
     }
 
-    const sliced = matches.slice(offset, offset + limit);
+    // Optional: filter/sort by trial/paid status (requires looking up subs/betas).
+    let filteredMatches = matches;
+    let subsAllByUserId: Map<string, any> | null = null;
+    let betasAllByUserId: Map<string, any> | null = null;
+
+    const needsMeta = plan !== 'all' || !!sort;
+    if (needsMeta && matches.length > 0) {
+      const idsAll = matches.map((u: any) => String(u.id || '')).filter(Boolean);
+
+      // Fetch beta_access + user_subscriptions for ALL matched ids (small project; ok).
+      const allSubs: any[] = [];
+      const allBetas: any[] = [];
+      for (const batch of chunk(idsAll, 500)) {
+        const [subsChunk, betasChunk] = await Promise.all([selectUserSubscriptions(supabase, batch), selectBetaAccess(supabase, batch)]);
+        allSubs.push(...(subsChunk || []));
+        allBetas.push(...(betasChunk || []));
+      }
+      subsAllByUserId = new Map(allSubs.map((r: any) => [String(r.user_id), r]));
+      betasAllByUserId = new Map(allBetas.map((r: any) => [String(r.user_id), r]));
+
+      filteredMatches = matches.filter((u: any) => {
+        const uid = String(u.id || '');
+        const sub = subsAllByUserId?.get(uid) || null;
+        const beta = betasAllByUserId?.get(uid) || null;
+        const trial = computeTrial({ sub, beta });
+        const paidActive = isPaidAppSubscription(sub);
+
+        if (plan === 'paid_active') return paidActive;
+        if (plan === 'trial_active') return !!trial && trial.status !== 'expired';
+        if (plan === 'trial_ending_7d') return !!trial && trial.status !== 'expired' && trial.days_left <= 7;
+        if (plan === 'trial_ending_3d') return !!trial && trial.status !== 'expired' && trial.days_left <= 3;
+        if (plan === 'trial_expired') return !!trial && trial.status === 'expired';
+        return true;
+      });
+
+      const trialEndsAtMs = (u: any) => {
+        const uid = String(u.id || '');
+        const sub = subsAllByUserId?.get(uid) || null;
+        const beta = betasAllByUserId?.get(uid) || null;
+        const t = computeTrial({ sub, beta });
+        return t ? msFromIso(t.ends_at) || 0 : 0;
+      };
+
+      if (sort === 'trial_ends_asc') filteredMatches.sort((a: any, b: any) => trialEndsAtMs(a) - trialEndsAtMs(b));
+      else if (sort === 'trial_ends_desc') filteredMatches.sort((a: any, b: any) => trialEndsAtMs(b) - trialEndsAtMs(a));
+      else if (sort === 'signup_asc')
+        filteredMatches.sort((a: any, b: any) => (msFromIso(a.created_at) || 0) - (msFromIso(b.created_at) || 0));
+      else if (sort === 'signup_desc') filteredMatches.sort((a: any, b: any) => (msFromIso(b.created_at) || 0) - (msFromIso(a.created_at) || 0));
+    }
+
+    const sliced = filteredMatches.slice(offset, offset + limit);
     const ids = sliced.map((u: any) => u.id);
 
     let subsByUserId = new Map<string, SubscriptionRow>();
@@ -118,17 +269,20 @@ export async function GET(request: NextRequest) {
     let streakDaysByUserId = new Map<string, number>();
     let lastStudyDateByUserId = new Map<string, string>();
     if (ids.length > 0) {
-      const { data: subs, error: subsErr } = await supabase
-        .from('user_subscriptions')
-        .select('user_id,tier,expires_at')
-        .in('user_id', ids);
-      if (!subsErr && subs) subsByUserId = new Map(subs.map((r: any) => [r.user_id, r]));
+      // Reuse preloaded metadata when available (plan/sort path); otherwise query per-page as before.
+      if (subsAllByUserId) {
+        subsByUserId = new Map(ids.map((id) => [id, subsAllByUserId!.get(id)]).filter((x) => !!x[1]) as any);
+      } else {
+        const subs = await selectUserSubscriptions(supabase, ids);
+        subsByUserId = new Map((subs || []).map((r: any) => [String(r.user_id), r]));
+      }
 
-      const { data: betas } = await supabase
-        .from('beta_access')
-        .select('user_id,tier,expires_at')
-        .in('user_id', ids);
-      if (betas) betaByUserId = new Map(betas.map((r: any) => [r.user_id, r]));
+      if (betasAllByUserId) {
+        betaByUserId = new Map(ids.map((id) => [id, betasAllByUserId!.get(id)]).filter((x) => !!x[1]) as any);
+      } else {
+        const betas = await selectBetaAccess(supabase, ids);
+        betaByUserId = new Map((betas || []).map((r: any) => [String(r.user_id), r]));
+      }
 
       const { data: profiles } = await supabase
         .from('users')
@@ -235,8 +389,9 @@ export async function GET(request: NextRequest) {
       const displayName = profile?.username || meta?.username || meta?.name || meta?.full_name || null;
 
       // Resolve tier with beta override
-      const resolvedTier = (beta?.tier || sub?.tier || null) as string | null;
-      const resolvedExpiresAt = beta?.expires_at || sub?.expires_at || null;
+      const resolved = resolveTierAndExpiry({ sub, beta });
+      const trial = computeTrial({ sub, beta });
+      const paidActive = isPaidAppSubscription(sub);
 
       return {
         id: u.id,
@@ -246,7 +401,9 @@ export async function GET(request: NextRequest) {
         banned_until: u.banned_until,
         name: displayName,
         tracks: { primary: profile?.primary_exam_type ?? null, secondary: profile?.secondary_exam_type ?? null },
-        subscription: { tier: resolvedTier, expires_at: resolvedExpiresAt, source: beta ? 'beta_access' : sub ? 'user_subscriptions' : null },
+        subscription: { tier: resolved.tier, expires_at: resolved.expires_at, source: resolved.source },
+        trial,
+        paid: { active: paidActive },
         device: seen
           ? {
               last_seen_at: seen.last_seen_at,
@@ -275,7 +432,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ rows, limit, offset, hasMore: matches.length > offset + limit });
+    return NextResponse.json({ rows, limit, offset, hasMore: filteredMatches.length > offset + limit });
   } catch (e: any) {
     const msg = typeof e?.message === 'string' ? e.message : 'Unauthorized';
     const status = msg === 'Forbidden' ? 403 : 401;

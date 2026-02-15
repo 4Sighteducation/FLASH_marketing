@@ -11,6 +11,8 @@ type AdminUserRow = {
   banned_until: string | null;
   name?: string | null;
   subscription: { tier: string | null; expires_at: string | null; source?: string | null };
+  trial?: { kind: 'trial' | 'legacy_trial'; ends_at: string; days_left: number; status: 'active' | 'ending_soon' | 'expired' } | null;
+  paid?: { active: boolean } | null;
   device?: {
     last_seen_at: string | null;
     platform: string | null;
@@ -35,6 +37,11 @@ type DashboardStats = {
   premiumCount: number;
   redeemsCount: number;
   parentBuysCount: number;
+  trialActiveCount?: number;
+  trialEnding7dCount?: number;
+  trialEnding3dCount?: number;
+  paidAppActiveCount?: number;
+  paidShareOfProLike?: number; // 0..1
 };
 
 export default function UserManagement() {
@@ -45,6 +52,8 @@ export default function UserManagement() {
   const [statsBusy, setStatsBusy] = useState(false);
   const [expiresAt, setExpiresAt] = useState<string>('');
   const [pageSize, setPageSize] = useState<'100' | '15'>('100');
+  const [plan, setPlan] = useState<'all' | 'trial_active' | 'trial_ending_7d' | 'trial_ending_3d' | 'trial_expired' | 'paid_active'>('all');
+  const [sort, setSort] = useState<'' | 'trial_ends_asc' | 'trial_ends_desc' | 'signup_desc' | 'signup_asc'>('trial_ends_asc');
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [selectedById, setSelectedById] = useState<Record<string, boolean>>({});
@@ -101,11 +110,79 @@ export default function UserManagement() {
     }
   };
 
-  const fetchUsers = async (nextOffset = 0) => {
+  const fmtDateShort = (iso: string | null | undefined) => {
+    if (!iso) return '—';
+    const ms = Date.parse(iso);
+    if (!Number.isFinite(ms)) return '—';
+    return new Date(ms).toLocaleDateString();
+  };
+
+  const renderTrialPill = (u: AdminUserRow) => {
+    if (!u.trial?.ends_at) return <span style={{ color: '#64748B' }}>—</span>;
+    const daysLeft = Number(u.trial.days_left);
+    const ends = new Date(u.trial.ends_at);
+
+    let bg = 'rgba(34, 197, 94, 0.12)'; // green-ish
+    let border = 'rgba(34, 197, 94, 0.35)';
+    let color = '#22C55E';
+    let label = `${Math.max(0, daysLeft)}d`;
+    if (daysLeft <= 0) {
+      bg = 'rgba(255, 0, 110, 0.10)';
+      border = 'rgba(255, 0, 110, 0.35)';
+      color = '#FF006E';
+      label = 'expired';
+    } else if (daysLeft <= 3) {
+      bg = 'rgba(255, 0, 110, 0.10)';
+      border = 'rgba(255, 0, 110, 0.35)';
+      color = '#FF006E';
+    } else if (daysLeft <= 7) {
+      bg = 'rgba(245, 158, 11, 0.12)';
+      border = 'rgba(245, 158, 11, 0.35)';
+      color = '#F59E0B';
+    } else {
+      bg = 'rgba(0, 245, 255, 0.10)';
+      border = 'rgba(0, 245, 255, 0.25)';
+      color = '#00F5FF';
+    }
+
+    const kind = u.trial.kind === 'legacy_trial' ? 'legacy' : 'trial';
+    return (
+      <span
+        title={`Trial ends: ${ends.toLocaleString()} (${kind})`}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '6px 10px',
+          borderRadius: 999,
+          background: bg,
+          border: `1px solid ${border}`,
+          color,
+          fontWeight: 900,
+          fontSize: 12,
+          letterSpacing: 0.2,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        ⏳ {label}
+      </span>
+    );
+  };
+
+  const fetchUsers = async (
+    nextOffset = 0,
+    overrides?: { plan?: typeof plan; sort?: typeof sort; q?: string; pageSize?: typeof pageSize }
+  ) => {
     setLoading(true);
     try {
+      const planQ = overrides?.plan ?? plan;
+      const sortQ = overrides?.sort ?? sort;
+      const qQ = overrides?.q ?? q;
+      const pageSizeQ = overrides?.pageSize ?? pageSize;
       const res = await adminFetch<UsersResponse>(
-        `/api/admin/users?q=${encodeURIComponent(q)}&limit=${encodeURIComponent(pageSize)}&offset=${encodeURIComponent(String(nextOffset))}`,
+        `/api/admin/users?q=${encodeURIComponent(qQ)}&limit=${encodeURIComponent(pageSizeQ)}&offset=${encodeURIComponent(String(nextOffset))}&plan=${encodeURIComponent(
+          planQ
+        )}&sort=${encodeURIComponent(sortQ)}`,
         { method: 'GET' }
       );
       setUsers(res.rows || []);
@@ -475,6 +552,43 @@ export default function UserManagement() {
           <button onClick={refreshEngagementStats} disabled={loading || statsBusy} className="action-button" title="Refresh user_daily_study_stats_mv (used for streak/reviews)">
             {statsBusy ? '…' : '📈 Refresh stats'}
           </button>
+          <span style={{ color: '#94A3B8', fontSize: 13, fontWeight: 800 }}>Filter</span>
+          <select
+            className="search-input"
+            style={{ width: 210 }}
+            value={plan}
+            onChange={(e) => {
+              const next = ((e.target.value as any) || 'all') as typeof plan;
+              setPlan(next);
+              // reset pagination immediately using the chosen filter
+              fetchUsers(0, { plan: next });
+            }}
+            title="Filter by trial/paid status"
+          >
+            <option value="all">All users</option>
+            <option value="trial_active">Trial active</option>
+            <option value="trial_ending_7d">Trial ending ≤ 7d</option>
+            <option value="trial_ending_3d">Trial ending ≤ 3d</option>
+            <option value="trial_expired">Trial expired</option>
+            <option value="paid_active">Paid (active)</option>
+          </select>
+          <span style={{ color: '#94A3B8', fontSize: 13, fontWeight: 800 }}>Sort</span>
+          <select
+            className="search-input"
+            style={{ width: 210 }}
+            value={sort}
+            onChange={(e) => {
+              const next = ((e.target.value as any) || '') as typeof sort;
+              setSort(next);
+              fetchUsers(0, { sort: next });
+            }}
+            title="Sorting"
+          >
+            <option value="trial_ends_asc">Trial ends (soonest first)</option>
+            <option value="trial_ends_desc">Trial ends (latest first)</option>
+            <option value="signup_desc">Signup (newest first)</option>
+            <option value="signup_asc">Signup (oldest first)</option>
+          </select>
         </div>
       </div>
 
@@ -503,6 +617,28 @@ export default function UserManagement() {
           <div className="stat-card stat-card-pink">
             <div className="stat-number">{stats.waitlistCount ?? '—'}</div>
             <div className="stat-label">Waitlist</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-number">{stats.trialActiveCount ?? '—'}</div>
+            <div className="stat-label">Trials active</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-number">{stats.trialEnding7dCount ?? '—'}</div>
+            <div className="stat-label">Trials ending (7d)</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-number">{stats.trialEnding3dCount ?? '—'}</div>
+            <div className="stat-label">Trials ending (3d)</div>
+          </div>
+          <div className="stat-card stat-card-cyan">
+            <div className="stat-number">{stats.paidAppActiveCount ?? '—'}</div>
+            <div className="stat-label">Paid (active)</div>
+          </div>
+          <div className="stat-card stat-card-pink">
+            <div className="stat-number">
+              {typeof stats.paidShareOfProLike === 'number' ? `${Math.round(stats.paidShareOfProLike * 100)}%` : '—'}
+            </div>
+            <div className="stat-label">Paid share</div>
           </div>
         </div>
       ) : null}
@@ -661,10 +797,12 @@ export default function UserManagement() {
               </th>
               <th style={{ padding: 12 }}>Email</th>
               <th style={{ padding: 12 }}>Tier</th>
+              <th style={{ padding: 12 }}>Trial left</th>
+              <th style={{ padding: 12 }}>Signup</th>
               <th style={{ padding: 12 }}>Cards</th>
+              <th style={{ padding: 12 }}>Reviews (7d)</th>
               <th style={{ padding: 12 }}>Last active</th>
               <th style={{ padding: 12 }}>Streak</th>
-              <th style={{ padding: 12 }}>Country</th>
               <th style={{ padding: 12, minWidth: 320 }}>Actions</th>
             </tr>
           </thead>
@@ -684,10 +822,14 @@ export default function UserManagement() {
                     <span className={`tier-badge tier-${tier}`}>{tier}</span>
                     <span style={{ color: '#64748B', fontSize: 11 }}>{src}</span>
                   </td>
+                  <td style={{ padding: 12 }}>{renderTrialPill(u)}</td>
+                  <td style={{ padding: 12 }}>{fmtDateShort(u.created_at)}</td>
                   <td style={{ padding: 12 }}>{u.activation?.cards_count ?? 0}</td>
-                  <td style={{ padding: 12 }}>{lastActive ? new Date(lastActive).toLocaleString() : '—'}</td>
+                  <td style={{ padding: 12 }}>{u.engagement?.reviews_7d ?? 0}</td>
+                  <td style={{ padding: 12 }} title={deviceLabel}>
+                    {lastActive ? new Date(lastActive).toLocaleString() : '—'}
+                  </td>
                   <td style={{ padding: 12 }}>{u.engagement?.streak_days ?? 0}</td>
-                  <td style={{ padding: 12 }}>{u.device?.country || '—'}</td>
                   <td style={{ padding: 12 }}>
                     <div className="admin-actions">
                       <a className="action-button" href={`/admin/users/${u.id}`} style={{ padding: '7px 10px', fontSize: 12 }}>
@@ -727,7 +869,7 @@ export default function UserManagement() {
             })}
             {users.length === 0 ? (
               <tr>
-                <td style={{ padding: 12, color: '#94A3B8' }} colSpan={7}>
+                <td style={{ padding: 12, color: '#94A3B8' }} colSpan={9}>
                   {loading ? 'Loading…' : 'No users.'}
                 </td>
               </tr>
