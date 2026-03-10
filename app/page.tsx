@@ -216,6 +216,9 @@ export default function Home() {
               <a href="#features" className={`${styles.btn} ${styles.btnSecondary}`}>
                 See How It Works →
               </a>
+              <a href="/parents" className={`${styles.btn} ${styles.btnSecondary}`}>
+                Parents: Buy Pro for your child →
+              </a>
             </div>
 
             <div id="download-apps" style={{ marginTop: '1.25rem' }}>
@@ -636,6 +639,7 @@ export default function Home() {
                 <a href="#features">Features</a>
                 <a href="#subjects">Subjects</a>
                 <a href="#pricing">Pricing</a>
+                  <a href="/parents">Parents</a>
                 <a href="/download">Download</a>
               </div>
               <div>

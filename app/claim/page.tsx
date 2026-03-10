@@ -1,3 +1,6 @@
+import Navigation from '../components/Navigation';
+import StoreBadges from '../components/StoreBadges';
+
 function normalizeCode(code: string): string {
   return (code || '').replace(/[^0-9A-Z]/gi, '').toUpperCase();
 }
@@ -15,68 +18,50 @@ export default function ClaimPage({ searchParams }: { searchParams?: { code?: st
   const deepLink = code ? `com.foursighteducation.flash://redeem?code=${encodeURIComponent(code)}` : '';
 
   return (
-    <main style={{ maxWidth: 720, margin: '0 auto', padding: '48px 20px' }}>
-      <h1 style={{ fontSize: 34, marginBottom: 8 }}>Redeem FL4SH Pro</h1>
-      <p style={{ opacity: 0.85, marginBottom: 18 }}>Open the FL4SH app, sign in, then redeem this code:</p>
+    <>
+      <Navigation />
+      <main style={{ maxWidth: 720, margin: '0 auto', padding: '48px 20px' }}>
+        <h1 style={{ fontSize: 34, marginBottom: 8 }}>Redeem FL4SH Pro</h1>
+        <p style={{ opacity: 0.85, marginBottom: 18 }}>Open the FL4SH app, sign in, then redeem this code:</p>
 
-      <div
-        style={{
-          border: '1px solid rgba(255,255,255,0.12)',
-          borderRadius: 16,
-          padding: 18,
-          marginBottom: 18,
-          fontSize: 18,
-          letterSpacing: 1,
-        }}
-      >
-        <strong>{pretty || 'Missing code'}</strong>
-      </div>
-
-      {code ? (
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <a
-            href={deepLink}
-            style={{
-              padding: '12px 14px',
-              borderRadius: 10,
-              background: 'linear-gradient(90deg, #00e5ff, #ff4fd8)',
-              color: '#111',
-              fontWeight: 700,
-              textDecoration: 'none',
-            }}
-          >
-            Open the app
-          </a>
-          <a
-            href="https://apps.apple.com/"
-            style={{
-              padding: '12px 14px',
-              borderRadius: 10,
-              border: '1px solid rgba(255,255,255,0.18)',
-              textDecoration: 'none',
-              color: 'white',
-            }}
-          >
-            Get on iPhone
-          </a>
-          <a
-            href="https://play.google.com/store"
-            style={{
-              padding: '12px 14px',
-              borderRadius: 10,
-              border: '1px solid rgba(255,255,255,0.18)',
-              textDecoration: 'none',
-              color: 'white',
-            }}
-          >
-            Get on Android
-          </a>
+        <div
+          style={{
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 16,
+            padding: 18,
+            marginBottom: 18,
+            fontSize: 18,
+            letterSpacing: 1,
+          }}
+        >
+          <strong>{pretty || 'Missing code'}</strong>
         </div>
-      ) : null}
 
-      <p style={{ fontSize: 13, opacity: 0.75, marginTop: 18 }}>
-        If the “Open the app” button doesn’t work, install FL4SH first, then paste the code inside the app.
-      </p>
-    </main>
+        {code ? (
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <a
+              href={deepLink}
+              style={{
+                padding: '12px 14px',
+                borderRadius: 10,
+                background: 'linear-gradient(90deg, #00e5ff, #ff4fd8)',
+                color: '#111',
+                fontWeight: 700,
+                textDecoration: 'none',
+              }}
+            >
+              Open the app
+            </a>
+            <div style={{ flexBasis: '100%', height: 1 }} />
+            <StoreBadges showNote={false} />
+          </div>
+        ) : null}
+
+        <p style={{ fontSize: 13, opacity: 0.75, marginTop: 18 }}>
+          If the “Open the app” button doesn’t work, install FL4SH first, then paste the code inside the app:
+          <strong> Profile → Redeem code</strong>.
+        </p>
+      </main>
+    </>
   );
 }

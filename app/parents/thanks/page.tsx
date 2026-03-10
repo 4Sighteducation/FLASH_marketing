@@ -13,7 +13,8 @@ export default function ParentsThanksPage() {
 
         <h1 style={{ fontSize: 36, marginBottom: 8, textAlign: 'center' }}>Thanks — you’re all set</h1>
         <p style={{ opacity: 0.85, marginBottom: 18, textAlign: 'center' }}>
-          We’ve emailed your child with a redeem link and code. They just need to install FL4SH and sign in.
+          We’ve emailed your child with a redeem link and code (and also sent it to the payer email as a backup). They just
+          need to install FL4SH and sign in.
         </p>
         <p style={{ opacity: 0.85, textAlign: 'center' }}>
           If they can’t find the email, ask them to check spam/junk and search for “FL4SH”.

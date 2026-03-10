@@ -4,12 +4,14 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTurnstile } from '../lib/turnstileClient';
 import TurnstileFallbackBox from '../components/TurnstileFallbackBox';
+import Navigation from '../components/Navigation';
 
 function ParentsPageInner() {
   const searchParams = useSearchParams();
   const [childEmail, setChildEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const cancelled = (searchParams?.get('cancelled') || '').trim() === '1';
   const [website, setWebsite] = useState('');
   const [formStartedAt, setFormStartedAt] = useState(() => Date.now());
   const { blocked, fallbackVisible, invisibleRef, fallbackRef, getToken, reset } = useTurnstile({
@@ -58,84 +60,101 @@ function ParentsPageInner() {
   }
 
   return (
-    <main style={{ maxWidth: 720, margin: '0 auto', padding: '48px 20px' }}>
-      <h1 style={{ fontSize: 36, marginBottom: 8 }}>Keep your child studying like a Pro</h1>
-      <p style={{ opacity: 0.85, marginBottom: 28 }}>
-        Your child gets Pro free for their first 30 days. If they want to keep Pro afterwards, you can pay here.
-      </p>
+    <>
+      <Navigation />
+      <main style={{ maxWidth: 720, margin: '0 auto', padding: '48px 20px' }}>
+        <h1 style={{ fontSize: 36, marginBottom: 8 }}>Buy FL4SH Pro for your child</h1>
+        <p style={{ opacity: 0.85, marginBottom: 18 }}>
+          The app is free to download. This purchase unlocks <strong>Pro</strong> on your child’s account.
+        </p>
+        <div style={{ opacity: 0.9, marginBottom: 22, lineHeight: 1.6 }}>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>How it works</div>
+          <ol style={{ margin: 0, paddingLeft: 18 }}>
+            <li>Enter your child’s email (the one they use to log into FL4SH).</li>
+            <li>Complete secure checkout.</li>
+            <li>We email your child a code + link. They redeem it in the app: <strong>Profile → Redeem code</strong>.</li>
+          </ol>
+        </div>
 
-      <div style={{ border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: 20 }}>
-        <h2 style={{ fontSize: 20, marginTop: 0 }}>Pro (Annual)</h2>
-        <p style={{ margin: '6px 0 18px 0', opacity: 0.85 }}>£39.99 / year (2 months free)</p>
+        {cancelled ? (
+          <div style={{ marginBottom: 18, color: '#ffdfb4', fontSize: 14 }}>
+            Checkout cancelled — no problem. You can try again anytime.
+          </div>
+        ) : null}
 
-        <form onSubmit={onSubmit} style={{ display: 'grid', gap: 12 }}>
-          <div style={{ position: 'absolute', left: '-9999px', height: 0, overflow: 'hidden' }} aria-hidden="true">
-            <label>
-              Website
+        <div style={{ border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: 20 }}>
+          <h2 style={{ fontSize: 20, marginTop: 0 }}>Pro (Annual)</h2>
+          <p style={{ margin: '6px 0 18px 0', opacity: 0.85 }}>£39.99 / year (2 months free)</p>
+
+          <form onSubmit={onSubmit} style={{ display: 'grid', gap: 12 }}>
+            <div style={{ position: 'absolute', left: '-9999px', height: 0, overflow: 'hidden' }} aria-hidden="true">
+              <label>
+                Website
+                <input
+                  type="text"
+                  name="website"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  tabIndex={-1}
+                  autoComplete="off"
+                />
+              </label>
+            </div>
+            <label style={{ display: 'grid', gap: 6 }}>
+              <span>Child’s email address</span>
               <input
-                type="text"
-                name="website"
-                value={website}
-                onChange={(e) => setWebsite(e.target.value)}
-                tabIndex={-1}
-                autoComplete="off"
+                value={childEmail}
+                onChange={(e) => setChildEmail(e.target.value)}
+                placeholder="child@example.com"
+                type="email"
+                required
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  border: '1px solid rgba(255,255,255,0.18)',
+                  background: 'rgba(0,0,0,0.25)',
+                  color: 'white',
+                  fontSize: 16,
+                }}
               />
             </label>
-          </div>
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span>Child’s email address</span>
-            <input
-              value={childEmail}
-              onChange={(e) => setChildEmail(e.target.value)}
-              placeholder="child@example.com"
-              type="email"
-              required
+
+            {error ? <div style={{ color: '#ffb4b4', fontSize: 14 }}>{error}</div> : null}
+            <TurnstileFallbackBox
+              blocked={blocked}
+              fallbackVisible={fallbackVisible}
+              invisibleRef={invisibleRef}
+              fallbackRef={fallbackRef}
+              mailto="support@fl4shcards.com"
+              contactLabel="email us"
+              contextLabel="spam protection"
+            />
+
+            <button
+              type="submit"
+              disabled={!canSubmit || loading}
               style={{
                 padding: '12px 14px',
                 borderRadius: 10,
-                border: '1px solid rgba(255,255,255,0.18)',
-                background: 'rgba(0,0,0,0.25)',
-                color: 'white',
+                border: 'none',
                 fontSize: 16,
+                fontWeight: 700,
+                cursor: loading ? 'wait' : 'pointer',
+                background: 'linear-gradient(90deg, #00e5ff, #ff4fd8)',
+                color: '#111',
               }}
-            />
-          </label>
+            >
+              {loading ? 'Redirecting…' : 'Continue to secure checkout'}
+            </button>
+          </form>
 
-          {error ? <div style={{ color: '#ffb4b4', fontSize: 14 }}>{error}</div> : null}
-          <TurnstileFallbackBox
-            blocked={blocked}
-            fallbackVisible={fallbackVisible}
-            invisibleRef={invisibleRef}
-            fallbackRef={fallbackRef}
-            mailto="support@fl4shcards.com"
-            contactLabel="email us"
-            contextLabel="spam protection"
-          />
-
-          <button
-            type="submit"
-            disabled={!canSubmit || loading}
-            style={{
-              padding: '12px 14px',
-              borderRadius: 10,
-              border: 'none',
-              fontSize: 16,
-              fontWeight: 700,
-              cursor: loading ? 'wait' : 'pointer',
-              background: 'linear-gradient(90deg, #00e5ff, #ff4fd8)',
-              color: '#111',
-            }}
-          >
-            {loading ? 'Redirecting…' : 'Continue to secure checkout'}
-          </button>
-        </form>
-
-        <p style={{ fontSize: 13, opacity: 0.75, marginTop: 14 }}>
-          After checkout, we’ll email your child a redeem link and code. They’ll sign in (including Sign in with Apple) and
-          unlock Pro. You can cancel anytime.
-        </p>
-      </div>
-    </main>
+          <p style={{ fontSize: 13, opacity: 0.75, marginTop: 14, lineHeight: 1.6 }}>
+            After checkout, we’ll email your child a redeem link and code (and we’ll also send it to the payer email as a
+            backup). They can sign in with any method (including Sign in with Apple) and unlock Pro. You can cancel anytime.
+          </p>
+        </div>
+      </main>
+    </>
   );
 }
 

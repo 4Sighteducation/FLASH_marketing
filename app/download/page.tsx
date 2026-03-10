@@ -8,7 +8,7 @@ const GOOGLE_PLAY_URL = 'https://play.google.com/store/apps/details?id=com.fours
 export const metadata: Metadata = buildSeoMetadata({
   title: 'Download FL4SH | iOS & Android Apps Available Now',
   description:
-    'Download FL4SH now on iOS App Store and Google Play. AI-powered flashcards for GCSE & A-Level revision. Get Pro free for 30 days.',
+    'Download FL4SH now on iOS App Store and Google Play. AI-powered flashcards for GCSE & A-Level revision.',
   path: '/download',
 })
 
@@ -16,7 +16,7 @@ export default function Page() {
   return (
     <SeoPage
       title="Download FL4SH (iOS & Android)"
-      description="FL4SH is now available on iOS and Android. Download free and get Pro access for your first 30 days."
+      description="FL4SH is now available on iOS and Android. Download free and start studying in minutes."
       breadcrumbs={[
         { label: 'Home', href: '/' },
         { label: 'Download', href: '/download' },
@@ -30,9 +30,22 @@ export default function Page() {
             <li>Download FL4SH from your app store</li>
             <li>Create a free account</li>
             <li>Choose your exam board and subjects</li>
-            <li>Get Pro free for 30 days (no credit card required)</li>
+            <li>Start studying</li>
           </ol>
         </div>
+      </SeoCard>
+
+      <SeoCard title="👨‍👩‍👧 Parents & guardians: buy Pro for your child">
+        <p style={{ marginBottom: '0.75rem' }}>
+          FL4SH is free to download. If you want to unlock <strong>Pro</strong> for your child, you can purchase Pro on our
+          website and we’ll email them a redeem code.
+        </p>
+        <p style={{ marginBottom: '0.75rem' }}>
+          <a href="/parents"><strong>Buy Pro for your child →</strong></a>
+        </p>
+        <p style={{ fontSize: '0.875rem', opacity: '0.8' }}>
+          Your child activates Pro in the app via <strong>Profile → Redeem code</strong>.
+        </p>
       </SeoCard>
 
       <SeoCard title="📊 What You Get">
@@ -47,7 +60,7 @@ export default function Page() {
 
       <SeoCard title="💎 Pro Features">
         <p style={{ marginBottom: '1rem' }}>
-          <strong>Get Pro free for your first 30 days</strong> (no credit card required):
+          Pro unlocks the full FL4SH experience:
         </p>
         <ul style={{ lineHeight: '1.8' }}>
           <li>Unlimited subjects and flashcards</li>
@@ -57,7 +70,7 @@ export default function Page() {
           <li>Advanced analytics and insights</li>
         </ul>
         <p style={{ marginTop: '1rem', fontSize: '0.875rem', opacity: '0.8' }}>
-          After 30 days: Keep Pro for £3.99/month or £39.99/year (2 months free), or continue with our generous free tier.
+          Pro pricing: £3.99/month or £39.99/year (2 months free).
         </p>
       </SeoCard>
 

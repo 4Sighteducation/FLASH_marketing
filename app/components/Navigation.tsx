@@ -49,6 +49,7 @@ export default function Navigation() {
             <a href={hrefOnHomeOrRoot('#subjects')}>Subjects</a>
             <a href={hrefOnHomeOrRoot('#how-it-works')}>How It Works</a>
             <a href={hrefOnHomeOrRoot('#pricing')}>Pricing</a>
+            <a href="/parents">Parents</a>
             <a href="/schools">Schools</a>
           </div>
           
@@ -78,6 +79,7 @@ export default function Navigation() {
             <a href={hrefOnHomeOrRoot('#subjects')} onClick={closeMenu}>Subjects</a>
             <a href={hrefOnHomeOrRoot('#how-it-works')} onClick={closeMenu}>How It Works</a>
             <a href={hrefOnHomeOrRoot('#pricing')} onClick={closeMenu}>Pricing</a>
+            <a href="/parents" onClick={closeMenu}>Parents</a>
             <a href="/schools" onClick={closeMenu}>Schools</a>
             <a href="/schools" className={styles.mobileCta} onClick={closeMenu}>
               Free School Webinar →
