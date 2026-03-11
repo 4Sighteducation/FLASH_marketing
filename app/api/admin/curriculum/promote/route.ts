@@ -61,6 +61,26 @@ async function fetchAll<T>(sb: any, table: string, select: string, filters: (q: 
   return out;
 }
 
+function sortTopicCodes(a: string, b: string) {
+  // Natural-ish sort for dotted numeric codes (e.g. 4.1.10 after 4.1.2)
+  const pa = String(a || '').split('.').map((x) => (x.match(/^\d+$/) ? Number(x) : x));
+  const pb = String(b || '').split('.').map((x) => (x.match(/^\d+$/) ? Number(x) : x));
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const xa = pa[i];
+    const xb = pb[i];
+    if (xa === undefined) return -1;
+    if (xb === undefined) return 1;
+    if (typeof xa === 'number' && typeof xb === 'number') {
+      if (xa !== xb) return xa - xb;
+    } else {
+      const sa = String(xa);
+      const sb = String(xb);
+      if (sa !== sb) return sa.localeCompare(sb);
+    }
+  }
+  return 0;
+}
+
 export async function POST(request: NextRequest) {
   let runId: string | undefined;
   try {
@@ -174,10 +194,16 @@ export async function POST(request: NextRequest) {
     const sortOrderByStgId = new Map<string, number>();
     stgSorted.forEach((t, i) => sortOrderByStgId.set(t.id, i));
 
-    // Build upserts/insert rows reusing IDs by code then by (level,name)
-    const existingUpdates: any[] = [];
-    const newRows: any[] = [];
-    const usedProdIds = new Set<string>();
+    // ------------------------------------------------------------
+    // IMPORTANT: Promote level-by-level with real parent IDs.
+    //
+    // Production enforces a uniqueness constraint on:
+    //   (exam_board_subject_id, parent_topic_id, topic_level, topic_name)
+    //
+    // If we temporarily set parent_topic_id = NULL for all rows, repeated bullet
+    // names at the same level can collide before we patch relations. This is a
+    // common failure mode for content-heavy specs (Economics, Biology, etc.).
+    // ------------------------------------------------------------
 
     // Guardrail: staging topic_code should be unique within a subject
     const seenStgCodes = new Set<string>();
@@ -204,105 +230,57 @@ export async function POST(request: NextRequest) {
       return Array.from(m.values());
     };
 
-    for (const t of stgTopics) {
-      const code = t.topic_code;
-      let prodId = prodIdByCode.get(code);
-      if (!prodId) {
-        const key = `${t.topic_level}::${normName(t.topic_name)}`;
-        prodId = prodIdByLevelName.get(key);
-      }
-      // Never allow two staging topics to map to the same production topic id in one run
-      if (prodId && usedProdIds.has(prodId)) {
-        prodId = undefined;
-      }
-      if (prodId) {
-        usedProdIds.add(prodId);
-        existingUpdates.push({
-          id: prodId,
-          exam_board_subject_id: prodSub.id,
-          topic_code: code,
-          topic_name: t.topic_name,
-          topic_level: t.topic_level,
-          parent_topic_id: null,
-          sort_order: sortOrderByStgId.get(t.id) || 0,
-        });
-      } else {
-        newRows.push({
-          exam_board_subject_id: prodSub.id,
-          topic_code: code,
-          topic_name: t.topic_name,
-          topic_level: t.topic_level,
-          parent_topic_id: null,
-          sort_order: sortOrderByStgId.get(t.id) || 0,
-        });
-      }
-    }
+    // Map staging id -> staging code (for parent lookup)
+    const stgCodeById = new Map<string, string>();
+    stgTopics.forEach((t) => stgCodeById.set(t.id, t.topic_code));
 
-    // Upsert existing by id
+    // Promote in increasing level order so parent IDs are known when we insert children
+    const maxLevel = stgTopics.reduce((m, t) => Math.max(m, Number(t.topic_level || 0)), 0);
+
+    // Use stable identity: topic_code (preferred), else staging id (fallback).
+    // Keep a live code->prodId mapping as we insert.
+    const prodIdByCodeLive = new Map<string, string>(prodIdByCode);
+
     const chunk = async (rows: any[], fn: (c: any[]) => Promise<void>, size = 1000) => {
       for (let i = 0; i < rows.length; i += size) {
         await fn(rows.slice(i, i + size));
       }
     };
 
-    await chunk(existingUpdates, async (c) => {
-      const { error } = await sb.from('curriculum_topics').upsert(dedupeById(c), { onConflict: 'id' });
-      if (error) throw new Error(error.message);
-    });
+    for (let lvl = 0; lvl <= maxLevel; lvl++) {
+      const rowsAtLevel = stgTopics.filter((t) => t.topic_level === lvl).sort((a, b) => sortTopicCodes(a.topic_code, b.topic_code));
+      if (!rowsAtLevel.length) continue;
 
-    // Before inserting new rows, try to match exact (level,name) with bullet variants to avoid unique collisions.
-    const trulyNew: any[] = [];
-    for (const r of newRows) {
-      const lvl = r.topic_level;
-      const names = candidateNames(r.topic_name);
-      const { data: maybe, error } = await sb
-        .from('curriculum_topics')
-        .select('id,topic_name')
-        .eq('exam_board_subject_id', prodSub.id)
-        .eq('topic_level', lvl)
-        .in('topic_name', names)
-        .maybeSingle();
-      if (error) throw new Error(error.message);
-      if (maybe?.id) {
-        if (usedProdIds.has(maybe.id)) {
-          // If we've already updated this prod row in this run, treat this as truly new
-          trulyNew.push(r);
-        } else {
-          existingUpdates.push({ ...r, id: maybe.id });
-          usedProdIds.add(maybe.id);
+      const upserts: any[] = [];
+      for (const t of rowsAtLevel) {
+        const code = String(t.topic_code || '').trim();
+        const prodId = prodIdByCodeLive.get(code) || prodIdByCode.get(code) || t.id; // use staging id for new topics
+
+        let parentProdId: string | null = null;
+        if (t.parent_topic_id) {
+          const parentCode = stgCodeById.get(t.parent_topic_id) || null;
+          parentProdId = parentCode ? (prodIdByCodeLive.get(parentCode) || null) : null;
         }
-      } else {
-        trulyNew.push(r);
-      }
-    }
 
-    // Upsert any converted rows
-    if (existingUpdates.length) {
-      await chunk(existingUpdates, async (c) => {
-        const { error } = await sb.from('curriculum_topics').upsert(dedupeById(c), { onConflict: 'id' });
+        upserts.push({
+          id: prodId,
+          exam_board_subject_id: prodSub.id,
+          topic_code: code,
+          topic_name: t.topic_name,
+          topic_level: t.topic_level,
+          parent_topic_id: parentProdId,
+          sort_order: sortOrderByStgId.get(t.id) || 0,
+        });
+      }
+
+      await chunk(upserts, async (c) => {
+        const { data, error } = await sb.from('curriculum_topics').upsert(dedupeById(c), { onConflict: 'id' }).select('id,topic_code');
         if (error) throw new Error(error.message);
+        (data || []).forEach((row: any) => {
+          if (row?.id && row?.topic_code) prodIdByCodeLive.set(row.topic_code, row.id);
+        });
       });
     }
-
-    // Insert truly new rows
-    await chunk(trulyNew, async (c) => {
-      // Dedupe within chunk by topic_code (staging guard should already guarantee uniqueness)
-      const codeToRow = new Map<string, any>();
-      for (const r of c) {
-        const code = String(r.topic_code || '').trim();
-        if (!code) continue;
-        if (!codeToRow.has(code)) codeToRow.set(code, r);
-      }
-      const rows = Array.from(codeToRow.values());
-
-      // Now that production no longer has the (level,name) unique constraint, a plain insert is safe here.
-      // Uniqueness for promotions is provided by stable topic_code.
-      const { data, error } = await sb.from('curriculum_topics').insert(rows).select('id,topic_code');
-      if (error) throw new Error(error.message);
-      (data || []).forEach((row: any) => {
-        if (row?.id && row?.topic_code) prodIdByCode.set(row.topic_code, row.id);
-      });
-    });
 
     // Refresh prod topic code->id map after inserts/updates
     const prodTopics2 = await fetchAll<ProdTopic>(
@@ -315,9 +293,6 @@ export async function POST(request: NextRequest) {
     for (const p of prodTopics2) {
       if (p.topic_code) prodIdByCode2.set(p.topic_code, p.id);
     }
-    // Staging id->code map for parent linking
-    const stgCodeById = new Map<string, string>();
-    stgTopics.forEach((t) => stgCodeById.set(t.id, t.topic_code));
 
     // Patch parent relationships
     let parentLinksUpdated = 0;
@@ -367,7 +342,7 @@ export async function POST(request: NextRequest) {
       productionTopicsAfter: prodTopics2.length,
       parentLinksUpdated,
       cleanup: { deletedRemoved, keptRemoved },
-      note: 'Embeddings regeneration is intentionally not wired to this button yet (next step).',
+      note: 'Embeddings regeneration is available via the Embeddings button (runs an edge function).',
     };
 
     if (runId) {
