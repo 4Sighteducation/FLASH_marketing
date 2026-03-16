@@ -4,6 +4,8 @@ import styles from './LaunchBanner.module.css'
 
 const APP_STORE_URL = 'https://apps.apple.com/in/app/fl4sh-study-smarter/id6747457678'
 const GOOGLE_PLAY_URL = 'https://play.google.com/store/apps/details?id=com.foursighteducation.flash'
+const GOOGLE_PLAY_BADGE_URL =
+  'https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png'
 
 export default function LaunchBanner() {
   return (
@@ -14,11 +16,14 @@ export default function LaunchBanner() {
             <span className={styles.badge}>🎉 NOW AVAILABLE</span>
             <p>
               FL4SH is <strong className={styles.highlight}>LIVE</strong> on iOS and Android! 
-              {' '}<strong className={styles.highlight}>Get Pro free for 30 days</strong> — no credit card required.
+              {' '}<strong className={styles.highlight}>Get Pro free for 10 days</strong> — no credit card required.
             </p>
           </div>
           
           <div className={styles.buttonGroup}>
+            <a href="/download" className={styles.downloadButton}>
+              Download FL4SH
+            </a>
             <a
               href={APP_STORE_URL}
               target="_blank"
@@ -44,9 +49,9 @@ export default function LaunchBanner() {
             >
               <img
                 className={styles.storeBadge}
-                src="/flash_assets/store/google-play-badge.png"
+                src={GOOGLE_PLAY_BADGE_URL}
                 alt="Get it on Google Play"
-                width={155}
+                width={180}
                 height={60}
                 loading="lazy"
               />

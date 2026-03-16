@@ -46,10 +46,10 @@ export default function DownloadButton({
     )
   }
   
-  // For 'both', scroll to store badges
+  // For 'both', send users to the dedicated download page.
   return (
     <a
-      href="#download-apps"
+      href="/download"
       className={`${className} ${styles.btn} ${variant === 'primary' ? styles.btnPrimary : styles.btnSecondary}`}
     >
       {children}

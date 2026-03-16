@@ -62,8 +62,8 @@ export default function UserManagement() {
   const [feedbackSubject, setFeedbackSubject] = useState('Quick FL4SH feedback (2 mins) 🙏');
   const [feedbackDryRun, setFeedbackDryRun] = useState(true);
   const [feedbackForce, setFeedbackForce] = useState(false);
-  const [trialDays, setTrialDays] = useState('30');
-  const [trialSubject, setTrialSubject] = useState('FL4SH Pro unlocked for 30 days ⚡');
+  const [trialDays, setTrialDays] = useState('10');
+  const [trialSubject, setTrialSubject] = useState('FL4SH Pro unlocked for 10 days ⚡');
   const [trialDryRun, setTrialDryRun] = useState(true);
   const [trialSendEmail, setTrialSendEmail] = useState(true);
 
@@ -493,7 +493,7 @@ export default function UserManagement() {
   };
 
   const grantProTrialToLegacyFreeUsers = async () => {
-    const days = Number(trialDays) || 30;
+    const days = Number(trialDays) || 10;
     if (
       !confirm(
         `Grant Pro for ${days} days to ALL users currently tier=free?\n\nThis writes to beta_access (override).\n\n${

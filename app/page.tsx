@@ -222,7 +222,7 @@ export default function Home() {
             </div>
 
             <div id="download-apps" style={{ marginTop: '1.25rem' }}>
-              <StoreBadges note="Get Pro free for 30 days • No credit card required" />
+              <StoreBadges note="Get Pro free for 10 days • No credit card required" />
             </div>
             
             <div className={styles.trustBadges}>
@@ -463,19 +463,19 @@ export default function Home() {
       <section id="pricing" className={styles.pricingSection}>
         <div className={styles.container}>
           <h2 className={styles.sectionTitle}>
-            Your first month is <span className={styles.gradientText}>Pro — free</span>
+            Your first 10 days are <span className={styles.gradientText}>Pro — free</span>
           </h2>
           <p className={styles.pricingIntro}>
-            Get full Pro access for 30 days. No credit card required to start.
+            Get full Pro access for 10 days. No credit card required to start.
           </p>
 
           <div className={styles.trialGrid}>
-            {/* Month 1: Pro (free) */}
+            {/* First 10 days: Pro (free) */}
             <div className={`${styles.trialCard} ${styles.card} ${styles.cardPink} ${styles.trialFeatured}`}>
-              <div className={styles.badge}>FREE MONTH</div>
-              <h3 className={styles.trialTitle}>Month 1: Pro (free)</h3>
+              <div className={styles.badge}>10-DAY TRIAL</div>
+              <h3 className={styles.trialTitle}>First 10 days: Pro (free)</h3>
               <p className={styles.trialText}>
-                Start with full access and see how much progress you can make in 30 days.
+                Start with full access and see how much progress you can make in 10 days.
               </p>
               <ul className={styles.features}>
                 <li>✓ Unlimited subjects & flashcards</li>
@@ -484,7 +484,7 @@ export default function Home() {
                 <li>✓ Advanced analytics</li>
               </ul>
               <DownloadButton variant="primary" className={styles.btn}>
-                Get Pro free for 30 days
+                Get Pro free for 10 days
               </DownloadButton>
               <p className={styles.smallNote}>No credit card required to start.</p>
             </div>
@@ -538,7 +538,7 @@ export default function Home() {
                 <li>✕ No Past Papers</li>
               </ul>
               <p className={styles.smallPrint}>
-                After your free month ends, if you don’t keep Pro, your cards, subjects and progress from the Pro month will be
+                After your free trial ends, if you don’t keep Pro, your cards, subjects and progress from the Pro trial will be
                 reset and you’ll move to the Free tier limits.
               </p>
             </div>

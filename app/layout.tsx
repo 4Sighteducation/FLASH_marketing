@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'FL4SH Flashcards | GCSE & A-Level Revision App | AI-Powered Study',
-  description: 'Download FL4SH: AI-powered flashcard app for GCSE & A-Level revision. 10,000+ topics for all UK exam boards (AQA, Edexcel, OCR, WJEC, SQA). Free to download, Pro free for 30 days.',
+  description: 'Download FL4SH: AI-powered flashcard app for GCSE & A-Level revision. 10,000+ topics for all UK exam boards (AQA, Edexcel, OCR, WJEC, SQA). Free to download, Pro free for 10 days.',
   keywords: 'flashcards app, GCSE flashcards, A-Level flashcards, revision app, flash cards, GCSE revision, A-Level revision, AQA flashcards, Edexcel flashcards, OCR flashcards, WJEC flashcards, spaced repetition, Leitner system, UK exam boards, AI study tools, exam revision, study app, digital flashcards, mobile flashcards',
   authors: [{ name: '4Sight Education Ltd' }],
   creator: '4Sight Education Ltd',
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'FL4SH - AI-Powered Flashcard App for GCSE & A-Level',
-    description: 'Download FL4SH now on iOS and Android. AI-powered flashcards, 10,000+ exam topics, past papers included. Get Pro free for 30 days.',
+    description: 'Download FL4SH now on iOS and Android. AI-powered flashcards, 10,000+ exam topics, past papers included. Get Pro free for 10 days.',
     url: 'https://www.fl4shcards.com',
     siteName: 'FL4SH',
     images: [
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'FL4SH - AI Flashcard App for GCSE & A-Level',
-    description: 'Download FL4SH now on iOS and Android. Get Pro free for 30 days. AI-powered revision for all UK exam boards.',
+    description: 'Download FL4SH now on iOS and Android. Get Pro free for 10 days. AI-powered revision for all UK exam boards.',
     images: ['https://www.fl4shcards.com/flash_assets/banner-1500x500.png'],
   },
   verification: {

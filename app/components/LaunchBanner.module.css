@@ -72,6 +72,29 @@
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.downloadButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.75rem 1.1rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #00F5FF, #FF006E);
+  color: #0A0A1F;
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 0 18px rgba(0, 245, 255, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.downloadButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 22px rgba(255, 0, 110, 0.38);
 }
 
 .storeBadgeLink {
@@ -131,6 +154,10 @@
   }
   
   .storeBadgeLink {
+    width: 100%;
+  }
+
+  .downloadButton {
     width: 100%;
   }
 
