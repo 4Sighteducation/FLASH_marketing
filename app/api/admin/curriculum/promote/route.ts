@@ -61,6 +61,76 @@ async function fetchAll<T>(sb: any, table: string, select: string, filters: (q: 
   return out;
 }
 
+function parentKey(pid: string | null | undefined): string {
+  return pid == null || pid === '' ? '' : String(pid);
+}
+
+/**
+ * Old production rows (different topic_code) can share the same parent + level + topic_name as
+ * incoming staging rows. Postgres rejects the insert (curriculum_topics_parent_level_name_uidx).
+ */
+async function clearParentLevelNameCollisions(
+  sb: any,
+  upserts: Array<{
+    id: string;
+    topic_code: string;
+    topic_name: string;
+    topic_level: number;
+    parent_topic_id: string | null;
+  }>,
+  prodFullRows: Array<{
+    id: string;
+    topic_code: string | null;
+    topic_name: string | null;
+    topic_level: number | null;
+    parent_topic_id: string | null;
+  }>,
+  prodIdByCode: Map<string, string>,
+  prodIdByCodeLive: Map<string, string>
+): Promise<number> {
+  let cleared = 0;
+  for (const row of upserts) {
+    const incomingCode = row.topic_code;
+    const pk = parentKey(row.parent_topic_id);
+    const lvl = Number(row.topic_level ?? 0);
+    const nameNorm = normName(row.topic_name);
+
+    const conflicts = prodFullRows.filter(
+      (r) =>
+        r.topic_code !== incomingCode &&
+        parentKey(r.parent_topic_id) === pk &&
+        Number(r.topic_level ?? 0) === lvl &&
+        normName(r.topic_name) === nameNorm
+    );
+
+    for (const ex of conflicts) {
+      const eid = ex.id;
+      const codeEx = ex.topic_code;
+      const { count, error } = await sb.from('flashcards').select('id', { count: 'exact', head: true }).eq('topic_id', eid);
+      const cnt = error ? 1 : count || 0;
+      if (cnt === 0) {
+        const { error: delErr } = await sb.from('curriculum_topics').delete().eq('id', eid);
+        if (delErr) throw new Error(delErr.message);
+        const idx = prodFullRows.findIndex((r) => r.id === eid);
+        if (idx >= 0) prodFullRows.splice(idx, 1);
+        if (codeEx) {
+          prodIdByCode.delete(codeEx);
+          prodIdByCodeLive.delete(codeEx);
+        }
+        cleared += 1;
+      } else {
+        const oldTitle = (ex.topic_name || '').trim();
+        const newTitle = `[superseded] ${oldTitle}`.trim();
+        const { error: upErr } = await sb.from('curriculum_topics').update({ topic_name: newTitle }).eq('id', eid);
+        if (upErr) throw new Error(upErr.message);
+        ex.topic_name = newTitle;
+        cleared += 1;
+      }
+    }
+  }
+  return cleared;
+}
+
 function sortTopicCodes(a: string, b: string) {
   // Natural-ish sort for dotted numeric codes (e.g. 4.1.10 after 4.1.2)
   const pa = String(a || '').split('.').map((x) => (x.match(/^\d+$/) ? Number(x) : x));
@@ -166,21 +236,24 @@ export async function POST(request: NextRequest) {
     );
     if (!stgTopics.length) return NextResponse.json({ error: 'No staging topics found' }, { status: 400 });
 
-    // Fetch production topics
-    type ProdTopic = { id: string; topic_code: string | null; topic_name: string | null; topic_level: number | null };
-    const prodTopics = await fetchAll<ProdTopic>(
+    // Fetch production topics (include parent_topic_id for sibling name-collision detection)
+    type ProdTopic = {
+      id: string;
+      topic_code: string | null;
+      topic_name: string | null;
+      topic_level: number | null;
+      parent_topic_id: string | null;
+    };
+    const prodFullRows = await fetchAll<ProdTopic>(
       sb,
       'curriculum_topics',
-      'id,topic_code,topic_name,topic_level',
+      'id,topic_code,topic_name,topic_level,parent_topic_id',
       (q) => q.eq('exam_board_subject_id', prodSub.id)
     );
 
     const prodIdByCode = new Map<string, string>();
-    const prodIdByLevelName = new Map<string, string>();
-    for (const p of prodTopics) {
+    for (const p of prodFullRows) {
       if (p.topic_code) prodIdByCode.set(p.topic_code, p.id);
-      const key = `${p.topic_level ?? 0}::${normName(p.topic_name)}`;
-      if (normName(p.topic_name)) prodIdByLevelName.set(key, p.id);
     }
 
     // Deterministic sort_order (client-side)
@@ -247,6 +320,8 @@ export async function POST(request: NextRequest) {
       }
     };
 
+    let nameCollisionsCleared = 0;
+
     for (let lvl = 0; lvl <= maxLevel; lvl++) {
       const rowsAtLevel = stgTopics.filter((t) => t.topic_level === lvl).sort((a, b) => sortTopicCodes(a.topic_code, b.topic_code));
       if (!rowsAtLevel.length) continue;
@@ -273,6 +348,14 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      nameCollisionsCleared += await clearParentLevelNameCollisions(
+        sb,
+        upserts,
+        prodFullRows,
+        prodIdByCode,
+        prodIdByCodeLive
+      );
+
       await chunk(upserts, async (c) => {
         const { data, error } = await sb.from('curriculum_topics').upsert(dedupeById(c), { onConflict: 'id' }).select('id,topic_code');
         if (error) throw new Error(error.message);
@@ -280,10 +363,20 @@ export async function POST(request: NextRequest) {
           if (row?.id && row?.topic_code) prodIdByCodeLive.set(row.topic_code, row.id);
         });
       });
+
+      // Keep prodFullRows aligned with DB so deeper levels detect name collisions against newly inserted rows.
+      const refreshed = await fetchAll<ProdTopic>(
+        sb,
+        'curriculum_topics',
+        'id,topic_code,topic_name,topic_level,parent_topic_id',
+        (q) => q.eq('exam_board_subject_id', prodSub.id)
+      );
+      prodFullRows.length = 0;
+      prodFullRows.push(...refreshed);
     }
 
     // Refresh prod topic code->id map after inserts/updates
-    const prodTopics2 = await fetchAll<ProdTopic>(
+    const prodTopics2 = await fetchAll<Omit<ProdTopic, 'parent_topic_id'>>(
       sb,
       'curriculum_topics',
       'id,topic_code,topic_name,topic_level',
@@ -341,6 +434,7 @@ export async function POST(request: NextRequest) {
       stagingTopics: stgTopics.length,
       productionTopicsAfter: prodTopics2.length,
       parentLinksUpdated,
+      nameCollisionsCleared,
       cleanup: { deletedRemoved, keptRemoved },
       note: 'Embeddings regeneration is available via the Embeddings button (runs an edge function).',
     };
