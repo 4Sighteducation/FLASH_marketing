@@ -1,193 +1,59 @@
 import { MetadataRoute } from 'next'
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  return [
-    {
-      url: 'https://www.fl4shcards.com',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 1,
-    },
-    {
-      url: 'https://www.fl4shcards.com/download',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: 'https://www.fl4shcards.com/gcse-flashcards',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: 'https://www.fl4shcards.com/a-level-flashcards',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: 'https://www.fl4shcards.com/exam-boards/aqa',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.75,
-    },
-    {
-      url: 'https://www.fl4shcards.com/exam-boards/edexcel',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.75,
-    },
-    {
-      url: 'https://www.fl4shcards.com/exam-boards/ocr',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.75,
-    },
-    {
-      url: 'https://www.fl4shcards.com/subjects/mathematics',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.7,
-    },
-    {
-      url: 'https://www.fl4shcards.com/subjects/sciences',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.7,
-    },
-    {
-      url: 'https://www.fl4shcards.com/subjects/english',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.7,
-    },
-    {
-      url: 'https://www.fl4shcards.com/subjects/history',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.7,
-    },
-    {
-      url: 'https://www.fl4shcards.com/subjects/humanities',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.65,
-    },
-    {
-      url: 'https://www.fl4shcards.com/subjects/psychology',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.65,
-    },
-    {
-      url: 'https://www.fl4shcards.com/subjects/languages',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.65,
-    },
-    {
-      url: 'https://www.fl4shcards.com/subjects/business-and-it',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.65,
-    },
-    {
-      url: 'https://www.fl4shcards.com/subjects/physical-education',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.65,
-    },
-    {
-      url: 'https://www.fl4shcards.com/vocational',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.6,
-    },
-    {
-      url: 'https://www.fl4shcards.com/vocational/cambridge-nationals',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.55,
-    },
-    {
-      url: 'https://www.fl4shcards.com/vocational/btec-nationals',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.55,
-    },
-    {
-      url: 'https://www.fl4shcards.com/scotland',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.6,
-    },
-    {
-      url: 'https://www.fl4shcards.com/scotland/highers',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.55,
-    },
-    {
-      url: 'https://www.fl4shcards.com/scotland/nationals',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.55,
-    },
-    {
-      url: 'https://www.fl4shcards.com/international',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.6,
-    },
-    {
-      url: 'https://www.fl4shcards.com/international/igcse',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.55,
-    },
-    {
-      url: 'https://www.fl4shcards.com/international/international-a-level',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.55,
-    },
-    {
-      url: 'https://www.fl4shcards.com/schools',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.65,
-    },
-    {
-      url: 'https://www.fl4shcards.com/parents',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.6,
-    },
-    {
-      url: 'https://www.fl4shcards.com/support',
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
-    {
-      url: 'https://www.fl4shcards.com/contact',
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.4,
-    },
-    {
-      url: 'https://www.fl4shcards.com/privacy',
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.3,
-    },
-    {
-      url: 'https://www.fl4shcards.com/terms',
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.3,
-    },
-  ]
+// Must match next.config.js `trailingSlash: true` and your primary host (www).
+const base = 'https://www.fl4shcards.com'
+
+function absUrl(path: string): string {
+  const p = path.startsWith('/') ? path : `/${path}`
+  const withSlash = p.endsWith('/') ? p : `${p}/`
+  return `${base}${withSlash === '//' ? '/' : withSlash}`
 }
 
+type Entry = {
+  path: string
+  changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency']
+  priority: number
+}
+
+const ENTRIES: Entry[] = [
+  { path: '/', changeFrequency: 'weekly', priority: 1 },
+  { path: '/download', changeFrequency: 'weekly', priority: 0.8 },
+  { path: '/gcse-flashcards', changeFrequency: 'weekly', priority: 0.8 },
+  { path: '/a-level-flashcards', changeFrequency: 'weekly', priority: 0.8 },
+  { path: '/exam-boards/aqa', changeFrequency: 'weekly', priority: 0.75 },
+  { path: '/exam-boards/edexcel', changeFrequency: 'weekly', priority: 0.75 },
+  { path: '/exam-boards/ocr', changeFrequency: 'weekly', priority: 0.75 },
+  { path: '/subjects/mathematics', changeFrequency: 'weekly', priority: 0.7 },
+  { path: '/subjects/sciences', changeFrequency: 'weekly', priority: 0.7 },
+  { path: '/subjects/english', changeFrequency: 'weekly', priority: 0.7 },
+  { path: '/subjects/history', changeFrequency: 'weekly', priority: 0.7 },
+  { path: '/subjects/humanities', changeFrequency: 'weekly', priority: 0.65 },
+  { path: '/subjects/psychology', changeFrequency: 'weekly', priority: 0.65 },
+  { path: '/subjects/languages', changeFrequency: 'weekly', priority: 0.65 },
+  { path: '/subjects/business-and-it', changeFrequency: 'weekly', priority: 0.65 },
+  { path: '/subjects/physical-education', changeFrequency: 'weekly', priority: 0.65 },
+  { path: '/vocational', changeFrequency: 'weekly', priority: 0.6 },
+  { path: '/vocational/cambridge-nationals', changeFrequency: 'weekly', priority: 0.55 },
+  { path: '/vocational/btec-nationals', changeFrequency: 'weekly', priority: 0.55 },
+  { path: '/scotland', changeFrequency: 'weekly', priority: 0.6 },
+  { path: '/scotland/highers', changeFrequency: 'weekly', priority: 0.55 },
+  { path: '/scotland/nationals', changeFrequency: 'weekly', priority: 0.55 },
+  { path: '/international', changeFrequency: 'weekly', priority: 0.6 },
+  { path: '/international/igcse', changeFrequency: 'weekly', priority: 0.55 },
+  { path: '/international/international-a-level', changeFrequency: 'weekly', priority: 0.55 },
+  { path: '/schools', changeFrequency: 'weekly', priority: 0.65 },
+  { path: '/parents', changeFrequency: 'weekly', priority: 0.6 },
+  { path: '/support', changeFrequency: 'monthly', priority: 0.5 },
+  { path: '/contact', changeFrequency: 'monthly', priority: 0.4 },
+  { path: '/privacy', changeFrequency: 'monthly', priority: 0.3 },
+  { path: '/terms', changeFrequency: 'monthly', priority: 0.3 },
+]
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  return ENTRIES.map((e) => ({
+    url: absUrl(e.path),
+    lastModified: new Date(),
+    changeFrequency: e.changeFrequency,
+    priority: e.priority,
+  }))
+}

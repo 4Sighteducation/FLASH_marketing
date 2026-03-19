@@ -5,6 +5,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://www.fl4shcards.com'),
   title: 'FL4SH Flashcards | GCSE & A-Level Revision App | AI-Powered Study',
   description: 'Download FL4SH: AI-powered flashcard app for GCSE & A-Level revision. 10,000+ topics for all UK exam boards (AQA, Edexcel, OCR, WJEC, SQA). Free to download, Pro free for 10 days.',
   keywords: 'flashcards app, GCSE flashcards, A-Level flashcards, revision app, flash cards, GCSE revision, A-Level revision, AQA flashcards, Edexcel flashcards, OCR flashcards, WJEC flashcards, spaced repetition, Leitner system, UK exam boards, AI study tools, exam revision, study app, digital flashcards, mobile flashcards',
@@ -12,7 +13,8 @@ export const metadata: Metadata = {
   creator: '4Sight Education Ltd',
   publisher: '4Sight Education Ltd',
   alternates: {
-    canonical: 'https://www.fl4shcards.com',
+    // Match next.config.js trailingSlash: true
+    canonical: 'https://www.fl4shcards.com/',
   },
   robots: {
     index: true,
@@ -28,7 +30,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'FL4SH - AI-Powered Flashcard App for GCSE & A-Level',
     description: 'Download FL4SH now on iOS and Android. AI-powered flashcards, 10,000+ exam topics, past papers included. Get Pro free for 10 days.',
-    url: 'https://www.fl4shcards.com',
+    url: 'https://www.fl4shcards.com/',
     siteName: 'FL4SH',
     images: [
       {
