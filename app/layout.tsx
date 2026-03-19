@@ -34,7 +34,8 @@ export const metadata: Metadata = {
     siteName: 'FL4SH',
     images: [
       {
-        url: 'https://fl4shcards.com/flash_assets/banner-1500x500.png',
+        // Relative so metadataBase (www) is used; avoids apex vs www mismatch in og:image
+        url: '/flash_assets/banner-1500x500.png',
         width: 1500,
         height: 500,
         alt: 'FL4SH - AI-Powered Flashcards for GCSE & A-Level',
