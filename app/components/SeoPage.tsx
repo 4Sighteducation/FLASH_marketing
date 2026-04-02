@@ -1,6 +1,7 @@
-import type { Metadata } from 'next'
 import Link from 'next/link'
 import styles from './SeoPage.module.css'
+
+export { buildSeoMetadata } from '../lib/seo'
 
 type Breadcrumb = { label: string; href: string }
 
@@ -20,20 +21,6 @@ export function SeoCard(props: { title: string; children: React.ReactNode }) {
       {props.children}
     </section>
   )
-}
-
-export function buildSeoMetadata(params: {
-  title: string
-  description: string
-  path: string
-}): Metadata {
-  const url = `https://www.fl4shcards.com${params.path.startsWith('/') ? params.path : `/${params.path}`}`
-  return {
-    title: params.title,
-    description: params.description,
-    alternates: { canonical: url },
-    openGraph: { title: params.title, description: params.description, url },
-  }
 }
 
 export default function SeoPage(props: SeoPageProps) {

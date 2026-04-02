@@ -1,20 +1,31 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
+import Script from 'next/script'
+import SiteCreditFooter from './components/SiteCreditFooter'
+import { FL4SH_OG_IMAGE_PATH, SITE_URL } from './lib/seo'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
+const ogImageAbsolute = `${SITE_URL}${FL4SH_OG_IMAGE_PATH}`
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL('https://www.fl4shcards.com'),
+  metadataBase: new URL(SITE_URL),
   title: 'FL4SH Flashcards | GCSE & A-Level Revision App | AI-Powered Study',
-  description: 'Download FL4SH: AI-powered flashcard app for GCSE & A-Level revision. 10,000+ topics for all UK exam boards (AQA, Edexcel, OCR, WJEC, SQA). Free to download, Pro free for 10 days.',
-  keywords: 'flashcards app, GCSE flashcards, A-Level flashcards, revision app, flash cards, GCSE revision, A-Level revision, AQA flashcards, Edexcel flashcards, OCR flashcards, WJEC flashcards, spaced repetition, Leitner system, UK exam boards, AI study tools, exam revision, study app, digital flashcards, mobile flashcards',
+  description:
+    'Download FL4SH: AI-powered flashcard app for GCSE & A-Level revision. 10,000+ topics for all UK exam boards (AQA, Edexcel, OCR, WJEC, SQA). Free to download, Pro free for 10 days.',
+  keywords:
+    'flashcards app, GCSE flashcards, A-Level flashcards, revision app, flash cards, GCSE revision, A-Level revision, AQA flashcards, Edexcel flashcards, OCR flashcards, WJEC flashcards, spaced repetition, Leitner system, UK exam boards, AI study tools, exam revision, study app, digital flashcards, mobile flashcards',
   authors: [{ name: '4Sight Education Ltd' }],
   creator: '4Sight Education Ltd',
   publisher: '4Sight Education Ltd',
   alternates: {
-    // Match next.config.js trailingSlash: true
-    canonical: 'https://www.fl4shcards.com/',
+    canonical: `${SITE_URL}/`,
   },
   robots: {
     index: true,
@@ -28,17 +39,17 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: 'FL4SH - AI-Powered Flashcard App for GCSE & A-Level',
-    description: 'Download FL4SH now on iOS and Android. AI-powered flashcards, 10,000+ exam topics, past papers included. Get Pro free for 10 days.',
-    url: 'https://www.fl4shcards.com/',
+    title: 'FL4SH — AI-Powered Flashcard App for GCSE & A-Level',
+    description:
+      'Download FL4SH now on iOS and Android. AI-powered flashcards, 10,000+ exam topics, past papers included. Get Pro free for 10 days.',
+    url: `${SITE_URL}/`,
     siteName: 'FL4SH',
     images: [
       {
-        // Relative so metadataBase (www) is used; avoids apex vs www mismatch in og:image
-        url: '/flash_assets/banner-1500x500.png',
-        width: 1500,
-        height: 500,
-        alt: 'FL4SH - AI-Powered Flashcards for GCSE & A-Level',
+        url: FL4SH_OG_IMAGE_PATH,
+        width: 1200,
+        height: 630,
+        alt: 'FL4SH — AI-powered flashcards for GCSE & A-Level',
       },
     ],
     locale: 'en_GB',
@@ -46,12 +57,12 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'FL4SH - AI Flashcard App for GCSE & A-Level',
-    description: 'Download FL4SH now on iOS and Android. Get Pro free for 10 days. AI-powered revision for all UK exam boards.',
-    images: ['https://www.fl4shcards.com/flash_assets/banner-1500x500.png'],
+    title: 'FL4SH — AI Flashcard App for GCSE & A-Level',
+    description:
+      'Download FL4SH now on iOS and Android. Get Pro free for 10 days. AI-powered revision for all UK exam boards.',
+    images: [ogImageAbsolute],
   },
   verification: {
-    // Set in Vercel env as GOOGLE_SITE_VERIFICATION to avoid hardcoding.
     google: process.env.GOOGLE_SITE_VERIFICATION,
   },
 }
@@ -62,12 +73,23 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en-GB">
       <head>
-        {/* Root favicon for crawlers (Google/Bing often request /favicon.ico) */}
+        <meta charSet="utf-8" />
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-D74SL0V284"
+          strategy="afterInteractive"
+        />
+        <Script id="ga4-fl4sh" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-D74SL0V284');
+          `}
+        </Script>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-        {/* Use real PNG favicons (some .ico files in repo are PNG-in-disguise) */}
         <link rel="icon" type="image/png" sizes="16x16" href="/flash_assets/favicon-16.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/flash_assets/favicon-32.png" />
         <link rel="icon" type="image/png" sizes="48x48" href="/flash_assets/favicon-48.png" />
@@ -76,8 +98,10 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#0A0A1F" />
       </head>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        {children}
+        <SiteCreditFooter />
+      </body>
     </html>
   )
 }
-

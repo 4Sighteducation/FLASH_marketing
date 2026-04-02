@@ -1,13 +1,16 @@
+import type { Metadata } from 'next'
 import Image from 'next/image'
 import Navigation from '../components/Navigation'
 import SchoolWebinarSignup from '../components/SchoolWebinarSignup'
+import { buildSeoMetadata } from '../lib/seo'
 import styles from '../page.module.css'
 
-export const metadata = {
+export const metadata: Metadata = buildSeoMetadata({
   title: 'Schools: Free VESPA “Supercharged Revision” Webinar + FL4SH Early Access',
   description:
     'Schools: book a free 60-minute VESPA Academy student revision webinar (usually £350) by registering interest in FL4SH.',
-}
+  path: '/schools',
+})
 
 export default function SchoolsPage() {
   return (

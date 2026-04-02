@@ -23,6 +23,32 @@ export default function Home() {
     };
   }, [billing]);
 
+  const fl4shProductGraphSchema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'SoftwareApplication',
+        name: 'FL4SH',
+        description:
+          'AI-powered flashcard app built from real UK exam specifications. 10,000+ topics across all exam boards with Leitner spaced repetition.',
+        url: 'https://www.fl4shcards.com',
+        applicationCategory: 'EducationalApplication',
+        operatingSystem: 'iOS, Android',
+        provider: {
+          '@type': 'Organization',
+          name: '4Sight Education',
+          url: 'https://www.4sighteducation.com',
+        },
+      },
+      {
+        '@type': 'WebSite',
+        name: 'FL4SH',
+        url: 'https://www.fl4shcards.com/',
+        inLanguage: 'en-GB',
+      },
+    ],
+  }
+
   // FAQ Schema for Google
   const faqSchema = {
     "@context": "https://schema.org",
@@ -75,18 +101,6 @@ export default function Home() {
     ]
   };
 
-  const websiteSchema = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "FL4SH",
-    "url": "https://www.fl4shcards.com",
-    "potentialAction": {
-      "@type": "SearchAction",
-      "target": "https://www.fl4shcards.com/?q={search_term_string}",
-      "query-input": "required name=search_term_string",
-    },
-  };
-
   const mobileAppSchema = {
     "@context": "https://schema.org",
     "@type": "MobileApplication",
@@ -99,7 +113,7 @@ export default function Home() {
       "priceCurrency": "GBP"
     },
     "description": "AI-powered flashcards for GCSE & A-Level revision. 10,000+ topics, past papers, spaced repetition. Free to download with Pro trial.",
-    "screenshot": "https://www.fl4shcards.com/flash_assets/banner-1500x500.png",
+    "screenshot": "https://www.fl4shcards.com/flash_assets/og-share-1200x630.png",
     "downloadUrl": [
       "https://apps.apple.com/in/app/fl4sh-study-smarter/id6747457678",
       "https://play.google.com/store/apps/details?id=com.foursighteducation.flash"
@@ -158,15 +172,15 @@ export default function Home() {
       {/* Schema Markup for Google Rich Results */}
       <script
         type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(fl4shProductGraphSchema) }}
+      />
+      <script
+        type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
       />
       <script
         type="application/ld+json"
